@@ -1,0 +1,41 @@
+# Virtual environment
+.venv/
+
+# Secrets — never commit
+.env
+
+# Generated data (large / frequently regenerated)
+/data/raw/*
+!/data/raw/.gitkeep
+/data/processed/*.parquet
+/data/processed/*.duckdb
+/models/*.parquet
+
+# Scratch outputs — not for public consumption
+/dashboard/scratch/*
+!/dashboard/scratch/.gitkeep
+
+# NOTE: /dashboard/*.xlsx and /dashboard/PANW_*.md are intentionally NOT
+# ignored — the canonical PANW model outputs are committed for the demo.
+
+# Python artefacts
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# secrets scan baseline (track, not ignore)
+# .secrets.baseline is committed intentionally

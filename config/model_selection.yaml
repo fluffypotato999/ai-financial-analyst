@@ -1,0 +1,33 @@
+# Runtime model selection policy — NO hardcoded snapshot IDs.
+#
+# src/select_models.py calls Anthropic's /v1/models endpoint at runtime and
+# picks the highest-generation snapshot matching each role's family preference.
+# This file encodes the SELECTION RULES, not the IDs themselves, so the
+# pipeline automatically picks up new model releases without code changes.
+
+selection:
+  planner:
+    # Variance decomposition and narrative outlining.
+    # Prefer opus-class: more reliable causal reasoning over structured data.
+    prefer_family: ["opus"]
+    prefer_generation: "highest"
+    accept_aliases: true   # accept rolling aliases like "claude-opus-4-6"
+
+  narrator:
+    # Templated per-line-item narrative generation.
+    # Sonnet-class is sufficient and faster/cheaper for high-volume narration.
+    prefer_family: ["sonnet"]
+    prefer_generation: "highest"
+    accept_aliases: true
+
+fallback:
+  # Used ONLY when /v1/models is unreachable or returns no matching models.
+  # These IDs are deliberately stale by design — the live discovery path is
+  # the primary mechanism. Update only when a specific fallback is needed.
+  planner: "claude-opus-4-1-20250805"
+  narrator: "claude-sonnet-4-20250514"
+
+# Two-model split mirrors Kepler Finance's pattern:
+#   - opus-class for reasoning over the variance set
+#   - sonnet-class for templated per-line narrative generation
+# See /docs/MODELING_DECISIONS.md for rationale.

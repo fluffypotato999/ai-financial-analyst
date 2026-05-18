@@ -1,0 +1,19 @@
+repos:
+  # Ruff — lint (auto-fix) + format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # detect-secrets — never commit credentials
+  # Baseline: .secrets.baseline  (run `detect-secrets scan > .secrets.baseline` to regenerate)
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+
+# NOTE: pre-commit is intentionally NOT installed until Prompt 11.
+# Run manually after Prompt 11: pre-commit install && pre-commit run --all-files
