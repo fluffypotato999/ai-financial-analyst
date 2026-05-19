@@ -19,6 +19,8 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "C4"]
 "tests/**" = ["S101", "PLR2004", "SIM117", "T20"]
 # build_warehouse.py: SQL string literals exceed line length — not reformattable
 "src/build_warehouse.py" = ["E501"]
+# build_excel_model.py: list comprehensions with long cell-reference expressions
+"src/build_excel_model.py" = ["E501"]
 
 # ── Mypy (strict type checking) ──────────────────────────────────────────────
 [tool.mypy]
