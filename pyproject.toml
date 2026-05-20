@@ -21,6 +21,9 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "C4"]
 "src/build_warehouse.py" = ["E501"]
 # build_excel_model.py: list comprehensions with long cell-reference expressions
 "src/build_excel_model.py" = ["E501"]
+# export_for_tableau.py / build_variance_facts.py: long SQL and row-access expressions
+"src/export_for_tableau.py"    = ["E501"]
+"src/build_variance_facts.py"  = ["E501"]
 
 # ── Mypy (strict type checking) ──────────────────────────────────────────────
 [tool.mypy]
