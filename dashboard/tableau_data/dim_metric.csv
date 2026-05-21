@@ -1,0 +1,20 @@
+metric_key,label,category,unit
+Revenue,Revenue,Income Statement,USD
+CostOfRevenue,Cost of Revenue,Income Statement,USD
+GrossProfit,Gross Profit,Income Statement,USD
+OperatingExpenses,Operating Expenses,Income Statement,USD
+OperatingIncome,Operating Income,Income Statement,USD
+NetIncome,Net Income,Income Statement,USD
+Cash,Cash & Equivalents,Balance Sheet,USD
+AccountsReceivable,Accounts Receivable,Balance Sheet,USD
+Inventory,Inventory,Balance Sheet,USD
+TotalAssets,Total Assets,Balance Sheet,USD
+AccountsPayable,Accounts Payable,Balance Sheet,USD
+TotalLiabilities,Total Liabilities,Balance Sheet,USD
+TotalEquity,Total Equity,Balance Sheet,USD
+OperatingCashFlow,Operating Cash Flow,Cash Flow,USD
+GrossMarginPct,Gross Margin %,Ratios,PCT
+OperatingMarginPct,Operating Margin %,Ratios,PCT
+DSO,Days Sales Outstanding,Working Capital,DAYS
+DIO,Days Inventory Outstanding,Working Capital,DAYS
+DPO,Days Payable Outstanding,Working Capital,DAYS

@@ -149,7 +149,11 @@ preliminary-to-final value drift is handled silently.
 
 ## Dashboard
 
-Tableau Public dashboard *(link added after Prompt 7)*:
+**Tableau Public dashboard:** run `make dashboard TICKER=PANW` to generate the
+CSVs in `dashboard/tableau_data/`, then upload to Tableau Public following
+`dashboard/Tableau_Setup.md`. Once published, replace this line with the URL.
+
+Sheets in the workbook:
 
 - **Actual vs Forecast** — three-model ensemble with CI bands
 - **Variance Drivers** — mechanical decomposition (volume / margin / mix /

@@ -16,7 +16,7 @@ make demo TICKER=CRWD        # ~3 min once cmdstan is cached
 
 Open three things in tabs/windows:
 1. Tableau Public dashboard (or `dashboard/tableau_data/fact_financials.csv`)
-2. `dashboard/PANW_model.xlsx`
+2. `dashboard/PANW_3Statement_Model.xlsx`
 3. `dashboard/PANW_exec_commentary_<DATE>.md`
 
 ---
@@ -43,7 +43,7 @@ Open three things in tabs/windows:
 
 **What to show:** BalanceCheck = $0, Sources sheet provenance, Base→Bull scenario toggle.
 
-1. Open `PANW_model.xlsx`, navigate to **Balance_Sheet** sheet.
+1. Open `PANW_3Statement_Model.xlsx`, navigate to **Balance_Sheet** sheet.
 2. Show the BalanceCheck row — all cells should read `$0`.
    > "Assets equal liabilities plus equity by construction. Cash is the balancing item."
 3. Navigate to the **Sources** sheet.
@@ -89,13 +89,13 @@ Open three things in tabs/windows:
 - No Revenue_Disaggregation sheet
 
 Demo:
-1. Show `PANW_model.xlsx` → Balance_Sheet → InventoryNet row populated.
-2. Show `PANW_model.xlsx` → Revenue_Disaggregation tab exists.
+1. Show `PANW_3Statement_Model.xlsx` → Balance_Sheet → InventoryNet row populated.
+2. Show `PANW_3Statement_Model.xlsx` → Revenue_Disaggregation tab exists.
 3. Run CRWD:
    ```bash
    make dashboard TICKER=CRWD
    ```
-4. Open `dashboard/CRWD_model.xlsx` → Balance_Sheet → no InventoryNet row.
+4. Open `dashboard/CRWD_3Statement_Model.xlsx` → Balance_Sheet → no InventoryNet row.
 5. No Revenue_Disaggregation tab.
 
 **Talking point:**
