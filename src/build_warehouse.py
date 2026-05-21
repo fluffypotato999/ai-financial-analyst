@@ -465,7 +465,7 @@ def query_summary(db_path: Path) -> dict[str, Any]:
         row = con.execute("SELECT * FROM v_data_quality").fetchdf()
         if row.empty:
             return {}
-        return dict(row.iloc[0])  # type: ignore[return-value]
+        return dict(row.iloc[0])
     finally:
         con.close()
 

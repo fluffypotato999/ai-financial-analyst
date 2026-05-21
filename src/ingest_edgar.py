@@ -214,7 +214,7 @@ def _extract_line_item(
     Returns:
         List of row dicts ready for DataFrame construction.
     """
-    us_gaap: dict[str, Any] = facts_json.get("facts", {}).get("us-gaap", {})  # type: ignore[union-attr]
+    us_gaap: dict[str, Any] = facts_json.get("facts", {}).get("us-gaap", {})
 
     used_concept: str | None = None
     usd_entries: list[dict[str, Any]] | None = None
@@ -225,7 +225,7 @@ def _extract_line_item(
         raw_usd = us_gaap[concept].get("units", {}).get("USD")
         if raw_usd:
             used_concept = concept
-            usd_entries = raw_usd  # type: ignore[assignment]
+            usd_entries = raw_usd
             break
 
     if used_concept is None or usd_entries is None:

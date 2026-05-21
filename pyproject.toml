@@ -38,6 +38,27 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "C4"]
 strict = true
 python_version = "3.11"
 
+# These packages either lack stubs or ship their own py.typed — ignore their
+# import-untyped / import-not-found errors for the current dependency set.
+[[tool.mypy.overrides]]
+module = [
+    "openpyxl",
+    "openpyxl.*",
+    "tableauhyperapi",
+    "yfinance",
+    "fredapi",
+    "prophet",
+    "statsforecast",
+    "statsforecast.*",
+    "cmdstanpy",
+    "papermill",
+    "duckdb",
+    "shap",
+    "numba",
+    "deepdiff",
+]
+ignore_missing_imports = true
+
 # ── Pytest ───────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
 testpaths = ["tests"]

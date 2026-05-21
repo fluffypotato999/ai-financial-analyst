@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -120,7 +121,9 @@ def _sc(
 # ── Data loading ───────────────────────────────────────────────────────────────
 
 
-def _load_history(db_path: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, bool]:
+def _load_history(
+    db_path: Path,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, bool, pd.DataFrame]:
     """Return (hist_is, hist_bs, hist_cf, has_physical_inventory).
 
     Each DataFrame has up to ``_N_HIST`` rows, oldest-first, period_type='Q'.
@@ -191,7 +194,7 @@ def _load_history(db_path: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
     finally:
         con.close()
 
-    return hist_is, hist_bs, hist_cf, has_inv, sources  # type: ignore[return-value]
+    return hist_is, hist_bs, hist_cf, has_inv, sources
 
 
 def _v(df: pd.DataFrame, col: str, idx: int = -1, default: float = 0.0) -> float:
@@ -534,8 +537,8 @@ def _write_data_row(
     ws: Any,
     row: int,
     label: str,
-    hist_values: list[float | None],
-    fcst_values: list[float | None],
+    hist_values: Sequence[float | None],
+    fcst_values: Sequence[float | None] = (),
 ) -> None:
     """Write one data row with historical (blue) and forecast (green) cells."""
     _sc(ws, row, _COL_LABEL, label, font=_FONT_BOLD)
@@ -1138,7 +1141,7 @@ def _build_sources(ws: Any, sources_df: pd.DataFrame) -> None:
     for row_idx, row in sources_df.iterrows():
         for col_idx, col_name in enumerate(headers, start=1):
             val = row.get(col_name)
-            cell = ws.cell(row=int(row_idx) + 2, column=col_idx)  # type: ignore[arg-type]
+            cell = ws.cell(row=int(str(row_idx)) + 2, column=col_idx)
             if pd.notna(val):
                 cell.value = val
                 cell.font = _FONT_NORM
@@ -1338,7 +1341,8 @@ def build(ticker: str | None = None, db_path: Path | None = None) -> Path:
 
     # ── Build workbook ─────────────────────────────────────────────────────────
     wb = Workbook()
-    wb.remove(wb.active)  # type: ignore[arg-type]  # remove default empty sheet
+    if wb.active:
+        wb.remove(wb.active)  # remove default empty sheet
 
     _build_cover(wb.create_sheet("Cover"), resolved_ticker, company_name)
     _build_scenarios(wb.create_sheet("Scenarios"), scenarios, has_inv)
