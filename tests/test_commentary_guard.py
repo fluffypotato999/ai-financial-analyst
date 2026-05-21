@@ -40,6 +40,7 @@ _VALID_COMMENTARY = (
 
 # ── Helper ────────────────────────────────────────────────────────────────────
 
+
 def _guard(text: str, payload: dict = _PAYLOAD_1_2B) -> None:  # type: ignore[type-arg]
     run_hallucination_guard(text, payload)
 
@@ -81,7 +82,7 @@ def test_guard_accepts_percent_within_tolerance() -> None:
 
 def test_guard_accepts_8_0_pct() -> None:
     """'8.0%' from input → ACCEPTED."""
-    _guard(f"Gross margin was 8.0%.")
+    _guard("Gross margin was 8.0%.")
 
 
 # ── Parens-negative tests ─────────────────────────────────────────────────────

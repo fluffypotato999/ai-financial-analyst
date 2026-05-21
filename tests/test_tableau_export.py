@@ -13,7 +13,6 @@ from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
-import pytest
 import yaml
 
 from src.build_warehouse import build as build_warehouse
@@ -118,6 +117,7 @@ def test_dim_filing_one_row_per_accession(tmp_path: Path) -> None:
     """dim_filing must have no duplicate accession_no values."""
     db_path = _build_warehouse_tmp("panw_companyfacts.json", "PANW", 1327567, tmp_path)
     import duckdb
+
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         df_fin = _export_fact_financials(con)
@@ -131,6 +131,7 @@ def test_dim_filing_has_filing_url(tmp_path: Path) -> None:
     """All dim_filing rows must have a non-null filing_url."""
     db_path = _build_warehouse_tmp("panw_companyfacts.json", "PANW", 1327567, tmp_path)
     import duckdb
+
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         df_fin = _export_fact_financials(con)
@@ -147,6 +148,7 @@ def test_fact_financials_has_provenance_columns(tmp_path: Path) -> None:
     """fact_financials must carry accession_no and filing_url columns."""
     db_path = _build_warehouse_tmp("panw_companyfacts.json", "PANW", 1327567, tmp_path)
     import duckdb
+
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         df = _export_fact_financials(con)
@@ -160,6 +162,7 @@ def test_fact_financials_contains_revenue(tmp_path: Path) -> None:
     """fact_financials must have Revenue rows for PANW."""
     db_path = _build_warehouse_tmp("panw_companyfacts.json", "PANW", 1327567, tmp_path)
     import duckdb
+
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         df = _export_fact_financials(con)
@@ -172,6 +175,7 @@ def test_fact_financials_derived_metrics_present(tmp_path: Path) -> None:
     """fact_financials should include derived metrics (operating_margin_pct or revenue_yoy_growth)."""
     db_path = _build_warehouse_tmp("panw_companyfacts.json", "PANW", 1327567, tmp_path)
     import duckdb
+
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         df = _export_fact_financials(con)
@@ -179,7 +183,9 @@ def test_fact_financials_derived_metrics_present(tmp_path: Path) -> None:
         con.close()
     derived = {"operating_margin_pct", "revenue_yoy_growth", "revenue_qoq_growth"}
     found = derived & set(df["line_item"].values)
-    assert found, f"No derived metrics found in fact_financials; got line_items: {df['line_item'].unique()}"
+    assert (
+        found
+    ), f"No derived metrics found in fact_financials; got line_items: {df['line_item'].unique()}"
 
 
 # ── _export_fact_forecasts ────────────────────────────────────────────────────
@@ -195,15 +201,17 @@ def test_fact_forecasts_empty_stub_when_no_parquets(tmp_path: Path) -> None:
 
 def test_fact_forecasts_loads_parquet(tmp_path: Path) -> None:
     """fact_forecasts loads rows from a forecast parquet when present."""
-    stub = pd.DataFrame({
-        "model":         ["prophet"] * 4,
-        "period_end":    pd.date_range("2025-10-31", periods=4, freq="QE"),
-        "yhat":          [1e9, 1.1e9, 1.2e9, 1.3e9],
-        "yhat_lower_80": [0.9e9] * 4,
-        "yhat_upper_80": [1.1e9] * 4,
-        "yhat_lower_95": [0.8e9] * 4,
-        "yhat_upper_95": [1.2e9] * 4,
-    })
+    stub = pd.DataFrame(
+        {
+            "model": ["prophet"] * 4,
+            "period_end": pd.date_range("2025-10-31", periods=4, freq="QE"),
+            "yhat": [1e9, 1.1e9, 1.2e9, 1.3e9],
+            "yhat_lower_80": [0.9e9] * 4,
+            "yhat_upper_80": [1.1e9] * 4,
+            "yhat_lower_95": [0.8e9] * 4,
+            "yhat_upper_95": [1.2e9] * 4,
+        }
+    )
     stub.to_parquet(tmp_path / "TEST_baseline_forecasts.parquet", index=False)
 
     with patch("src.export_for_tableau._MODELS_DIR", tmp_path):
@@ -226,6 +234,7 @@ def test_fact_consensus_returns_stub_when_yfinance_fails() -> None:
 def test_fact_consensus_empty_stub_has_required_columns() -> None:
     """Empty stub must have the expected column schema."""
     from src.export_for_tableau import _empty_consensus_stub
+
     df = _empty_consensus_stub()
     for col in ("ticker", "period", "revenue_consensus", "n_analysts", "source"):
         assert col in df.columns
@@ -248,8 +257,14 @@ def test_export_writes_all_csv_files(tmp_path: Path) -> None:
     ):
         paths = export(ticker="PANW")
 
-    for name in ("fact_financials", "fact_forecasts", "fact_consensus",
-                 "dim_date", "dim_metric", "dim_filing"):
+    for name in (
+        "fact_financials",
+        "fact_forecasts",
+        "fact_consensus",
+        "dim_date",
+        "dim_metric",
+        "dim_filing",
+    ):
         assert name in paths, f"Missing output: {name}"
         assert paths[name].exists(), f"File not written: {paths[name]}"
 

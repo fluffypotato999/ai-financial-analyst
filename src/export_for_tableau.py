@@ -38,71 +38,143 @@ import yaml
 logger = logging.getLogger(__name__)
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-_REPO_ROOT      = Path(__file__).resolve().parents[1]
-_CONFIG_PATH    = _REPO_ROOT / "config" / "company.yaml"
-_PROCESSED_DIR  = _REPO_ROOT / "data" / "processed"
-_MODELS_DIR     = _REPO_ROOT / "models"
-_TABLEAU_DIR    = _REPO_ROOT / "dashboard" / "tableau_data"
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_CONFIG_PATH = _REPO_ROOT / "config" / "company.yaml"
+_PROCESSED_DIR = _REPO_ROOT / "data" / "processed"
+_MODELS_DIR = _REPO_ROOT / "models"
+_TABLEAU_DIR = _REPO_ROOT / "dashboard" / "tableau_data"
 
 # ── Metric metadata ────────────────────────────────────────────────────────────
 # Controls dim_metric.csv — human labels and category groupings for Tableau.
 _METRIC_META: list[dict[str, str]] = [
     # Income Statement
-    {"line_item": "Revenue",           "label": "Revenue",
-     "category": "Income Statement",   "unit": "USD"},
-    {"line_item": "CostOfRevenue",     "label": "Cost of Revenue",
-     "category": "Income Statement",   "unit": "USD"},
-    {"line_item": "GrossProfit",       "label": "Gross Profit",
-     "category": "Income Statement",   "unit": "USD"},
-    {"line_item": "OperatingExpenses", "label": "Operating Expenses",
-     "category": "Income Statement",   "unit": "USD"},
-    {"line_item": "OperatingIncome",   "label": "Operating Income",
-     "category": "Income Statement",   "unit": "USD"},
-    {"line_item": "NetIncome",         "label": "Net Income",
-     "category": "Income Statement",   "unit": "USD"},
+    {"line_item": "Revenue", "label": "Revenue", "category": "Income Statement", "unit": "USD"},
+    {
+        "line_item": "CostOfRevenue",
+        "label": "Cost of Revenue",
+        "category": "Income Statement",
+        "unit": "USD",
+    },
+    {
+        "line_item": "GrossProfit",
+        "label": "Gross Profit",
+        "category": "Income Statement",
+        "unit": "USD",
+    },
+    {
+        "line_item": "OperatingExpenses",
+        "label": "Operating Expenses",
+        "category": "Income Statement",
+        "unit": "USD",
+    },
+    {
+        "line_item": "OperatingIncome",
+        "label": "Operating Income",
+        "category": "Income Statement",
+        "unit": "USD",
+    },
+    {
+        "line_item": "NetIncome",
+        "label": "Net Income",
+        "category": "Income Statement",
+        "unit": "USD",
+    },
     # Balance Sheet
-    {"line_item": "Cash",              "label": "Cash & Equivalents",
-     "category": "Balance Sheet",      "unit": "USD"},
-    {"line_item": "AccountsReceivable","label": "Accounts Receivable",
-     "category": "Balance Sheet",      "unit": "USD"},
-    {"line_item": "Inventory",         "label": "Inventory",
-     "category": "Balance Sheet",      "unit": "USD"},
-    {"line_item": "AccountsPayable",   "label": "Accounts Payable",
-     "category": "Balance Sheet",      "unit": "USD"},
-    {"line_item": "DeferredRevenue",   "label": "Deferred Revenue",
-     "category": "Balance Sheet",      "unit": "USD"},
-    {"line_item": "TotalAssets",       "label": "Total Assets",
-     "category": "Balance Sheet",      "unit": "USD"},
-    {"line_item": "TotalLiabilities",  "label": "Total Liabilities",
-     "category": "Balance Sheet",      "unit": "USD"},
-    {"line_item": "TotalEquity",       "label": "Total Equity",
-     "category": "Balance Sheet",      "unit": "USD"},
+    {
+        "line_item": "Cash",
+        "label": "Cash & Equivalents",
+        "category": "Balance Sheet",
+        "unit": "USD",
+    },
+    {
+        "line_item": "AccountsReceivable",
+        "label": "Accounts Receivable",
+        "category": "Balance Sheet",
+        "unit": "USD",
+    },
+    {"line_item": "Inventory", "label": "Inventory", "category": "Balance Sheet", "unit": "USD"},
+    {
+        "line_item": "AccountsPayable",
+        "label": "Accounts Payable",
+        "category": "Balance Sheet",
+        "unit": "USD",
+    },
+    {
+        "line_item": "DeferredRevenue",
+        "label": "Deferred Revenue",
+        "category": "Balance Sheet",
+        "unit": "USD",
+    },
+    {
+        "line_item": "TotalAssets",
+        "label": "Total Assets",
+        "category": "Balance Sheet",
+        "unit": "USD",
+    },
+    {
+        "line_item": "TotalLiabilities",
+        "label": "Total Liabilities",
+        "category": "Balance Sheet",
+        "unit": "USD",
+    },
+    {
+        "line_item": "TotalEquity",
+        "label": "Total Equity",
+        "category": "Balance Sheet",
+        "unit": "USD",
+    },
     # Cash Flow
-    {"line_item": "OperatingCashFlow", "label": "Operating Cash Flow",
-     "category": "Cash Flow",          "unit": "USD"},
-    {"line_item": "CapEx",             "label": "Capital Expenditures",
-     "category": "Cash Flow",          "unit": "USD"},
-    {"line_item": "FreeCashFlow",      "label": "Free Cash Flow",
-     "category": "Cash Flow",          "unit": "USD"},
-    {"line_item": "StockBasedCompensation", "label": "Stock-Based Compensation",
-     "category": "Cash Flow",          "unit": "USD"},
+    {
+        "line_item": "OperatingCashFlow",
+        "label": "Operating Cash Flow",
+        "category": "Cash Flow",
+        "unit": "USD",
+    },
+    {"line_item": "CapEx", "label": "Capital Expenditures", "category": "Cash Flow", "unit": "USD"},
+    {
+        "line_item": "FreeCashFlow",
+        "label": "Free Cash Flow",
+        "category": "Cash Flow",
+        "unit": "USD",
+    },
+    {
+        "line_item": "StockBasedCompensation",
+        "label": "Stock-Based Compensation",
+        "category": "Cash Flow",
+        "unit": "USD",
+    },
     # Derived metrics
-    {"line_item": "gross_margin_pct",  "label": "Gross Margin %",
-     "category": "Margins",            "unit": "pct"},
-    {"line_item": "operating_margin_pct", "label": "Operating Margin %",
-     "category": "Margins",            "unit": "pct"},
-    {"line_item": "net_margin_pct",    "label": "Net Margin %",
-     "category": "Margins",            "unit": "pct"},
-    {"line_item": "fcf_margin_pct",    "label": "FCF Margin %",
-     "category": "Margins",            "unit": "pct"},
-    {"line_item": "revenue_yoy_growth","label": "Revenue YoY Growth",
-     "category": "Growth",             "unit": "pct"},
-    {"line_item": "revenue_qoq_growth","label": "Revenue QoQ Growth",
-     "category": "Growth",             "unit": "pct"},
+    {
+        "line_item": "gross_margin_pct",
+        "label": "Gross Margin %",
+        "category": "Margins",
+        "unit": "pct",
+    },
+    {
+        "line_item": "operating_margin_pct",
+        "label": "Operating Margin %",
+        "category": "Margins",
+        "unit": "pct",
+    },
+    {"line_item": "net_margin_pct", "label": "Net Margin %", "category": "Margins", "unit": "pct"},
+    {"line_item": "fcf_margin_pct", "label": "FCF Margin %", "category": "Margins", "unit": "pct"},
+    {
+        "line_item": "revenue_yoy_growth",
+        "label": "Revenue YoY Growth",
+        "category": "Growth",
+        "unit": "pct",
+    },
+    {
+        "line_item": "revenue_qoq_growth",
+        "label": "Revenue QoQ Growth",
+        "category": "Growth",
+        "unit": "pct",
+    },
 ]
 
 
 # ── Helper: fiscal period → calendar quarter ──────────────────────────────────
+
 
 def _fiscal_to_calendar_quarter(
     fiscal_year: int,
@@ -126,7 +198,7 @@ def _fiscal_to_calendar_quarter(
     # Offset Q1 start from FY start month
     fy_start_month = (fy_end_month % 12) + 1
     cal_month = (fy_start_month + (quarter_num - 1) * 3 - 1) % 12 + 1
-    cal_year  = fiscal_year
+    cal_year = fiscal_year
     # If the quarter start crosses a calendar year boundary
     raw_month = fy_start_month + (quarter_num - 1) * 3
     if raw_month > 12:
@@ -136,6 +208,7 @@ def _fiscal_to_calendar_quarter(
 
 
 # ── Export functions ───────────────────────────────────────────────────────────
+
 
 def _export_fact_financials(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     """Long-format actuals with provenance columns."""
@@ -180,27 +253,34 @@ def _export_fact_financials(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     ticker = df["ticker"].iloc[0] if len(df) > 0 else ""
     derived_rows: list[dict[str, Any]] = []
     for _, mrow in metrics.iterrows():
-        for col in ("gross_margin_pct", "operating_margin_pct",
-                    "net_margin_pct", "fcf_margin_pct",
-                    "revenue_yoy_growth", "revenue_qoq_growth"):
+        for col in (
+            "gross_margin_pct",
+            "operating_margin_pct",
+            "net_margin_pct",
+            "fcf_margin_pct",
+            "revenue_yoy_growth",
+            "revenue_qoq_growth",
+        ):
             val = mrow[col]
             if pd.notna(val):
-                derived_rows.append({
-                    "ticker":       ticker,
-                    "line_item":    col,
-                    "period_end":   mrow["period_end"],
-                    "period_type":  "Q",
-                    "fiscal_year":  mrow["fiscal_year"],
-                    "fiscal_period": mrow["fiscal_period"],
-                    "value":        float(val),
-                    "unit":         "pct",
-                    "concept_used": "derived",
-                    "accession_no": None,
-                    "fact_id":      None,
-                    "filing_url":   None,
-                    "form_type":    None,
-                    "filed_date":   None,
-                })
+                derived_rows.append(
+                    {
+                        "ticker": ticker,
+                        "line_item": col,
+                        "period_end": mrow["period_end"],
+                        "period_type": "Q",
+                        "fiscal_year": mrow["fiscal_year"],
+                        "fiscal_period": mrow["fiscal_period"],
+                        "value": float(val),
+                        "unit": "pct",
+                        "concept_used": "derived",
+                        "accession_no": None,
+                        "fact_id": None,
+                        "filing_url": None,
+                        "form_type": None,
+                        "filed_date": None,
+                    }
+                )
 
     if derived_rows:
         df = pd.concat([df, pd.DataFrame(derived_rows)], ignore_index=True)
@@ -226,10 +306,18 @@ def _export_fact_forecasts(ticker: str) -> pd.DataFrame:
 
     if not frames:
         logger.warning("No forecast parquets found; fact_forecasts.csv will be empty stub.")
-        return pd.DataFrame(columns=[
-            "ticker", "model", "period_end", "yhat",
-            "yhat_lower_80", "yhat_upper_80", "yhat_lower_95", "yhat_upper_95",
-        ])
+        return pd.DataFrame(
+            columns=[
+                "ticker",
+                "model",
+                "period_end",
+                "yhat",
+                "yhat_lower_80",
+                "yhat_upper_80",
+                "yhat_lower_95",
+                "yhat_upper_95",
+            ]
+        )
 
     combined = pd.concat(frames, ignore_index=True)
     combined["period_end"] = pd.to_datetime(combined["period_end"])
@@ -245,6 +333,7 @@ def _export_fact_consensus(ticker: str) -> pd.DataFrame:
     """
     try:
         import yfinance as yf  # noqa: PLC0415
+
         stock = yf.Ticker(ticker)
         try:
             earnings = stock.earnings_estimate
@@ -261,13 +350,15 @@ def _export_fact_consensus(ticker: str) -> pd.DataFrame:
             for period_str, row in earnings.iterrows():
                 avg_val = row.get("avg") if isinstance(row, pd.Series) else None
                 if avg_val is not None and pd.notna(avg_val):
-                    rows.append({
-                        "ticker":             ticker,
-                        "period":             str(period_str),
-                        "revenue_consensus":  float(avg_val),
-                        "n_analysts":         row.get("numberOfAnalysts", None),
-                        "source":             "yfinance",
-                    })
+                    rows.append(
+                        {
+                            "ticker": ticker,
+                            "period": str(period_str),
+                            "revenue_consensus": float(avg_val),
+                            "n_analysts": row.get("numberOfAnalysts", None),
+                            "source": "yfinance",
+                        }
+                    )
 
         if not rows:
             return _empty_consensus_stub()
@@ -280,9 +371,15 @@ def _export_fact_consensus(ticker: str) -> pd.DataFrame:
 
 
 def _empty_consensus_stub() -> pd.DataFrame:
-    return pd.DataFrame(columns=[
-        "ticker", "period", "revenue_consensus", "n_analysts", "source",
-    ])
+    return pd.DataFrame(
+        columns=[
+            "ticker",
+            "period",
+            "revenue_consensus",
+            "n_analysts",
+            "source",
+        ]
+    )
 
 
 def _export_dim_date(
@@ -296,39 +393,51 @@ def _export_dim_date(
     for df in (df_financials, df_forecasts):
         if "fiscal_year" not in df.columns or "fiscal_period" not in df.columns:
             continue
-        for _, row in df[["period_end", "fiscal_year", "fiscal_period"]].drop_duplicates().iterrows():
+        for _, row in (
+            df[["period_end", "fiscal_year", "fiscal_period"]].drop_duplicates().iterrows()
+        ):
             fp = str(row.get("fiscal_period", ""))
             fy = int(row.get("fiscal_year", 0)) if pd.notna(row.get("fiscal_year")) else 0
             if not fp.startswith("Q") or fy == 0:
                 continue
             cal_year, cal_q = _fiscal_to_calendar_quarter(fy, fp, fy_end_month)
-            all_rows.append({
-                "date_key":        str(row["period_end"])[:10],
-                "period_end":      row["period_end"],
-                "fiscal_year":     fy,
-                "fiscal_quarter":  fp,
-                "calendar_year":   cal_year,
-                "calendar_quarter": cal_q,
-            })
+            all_rows.append(
+                {
+                    "date_key": str(row["period_end"])[:10],
+                    "period_end": row["period_end"],
+                    "fiscal_year": fy,
+                    "fiscal_quarter": fp,
+                    "calendar_year": cal_year,
+                    "calendar_quarter": cal_q,
+                }
+            )
 
     # Forecast periods (no fiscal_year in fact_forecasts — derive from date)
     if "period_end" in df_forecasts.columns and "fiscal_year" not in df_forecasts.columns:
         for pe in df_forecasts["period_end"].dropna().unique():
             pe_dt = pd.to_datetime(pe)
-            all_rows.append({
-                "date_key":        str(pe_dt.date()),
-                "period_end":      pe_dt,
-                "fiscal_year":     pe_dt.year,
-                "fiscal_quarter":  f"Q{(pe_dt.month - 1) // 3 + 1}",
-                "calendar_year":   pe_dt.year,
-                "calendar_quarter": (pe_dt.month - 1) // 3 + 1,
-            })
+            all_rows.append(
+                {
+                    "date_key": str(pe_dt.date()),
+                    "period_end": pe_dt,
+                    "fiscal_year": pe_dt.year,
+                    "fiscal_quarter": f"Q{(pe_dt.month - 1) // 3 + 1}",
+                    "calendar_year": pe_dt.year,
+                    "calendar_quarter": (pe_dt.month - 1) // 3 + 1,
+                }
+            )
 
     if not all_rows:
-        return pd.DataFrame(columns=[
-            "date_key", "period_end", "fiscal_year", "fiscal_quarter",
-            "calendar_year", "calendar_quarter",
-        ])
+        return pd.DataFrame(
+            columns=[
+                "date_key",
+                "period_end",
+                "fiscal_year",
+                "fiscal_quarter",
+                "calendar_year",
+                "calendar_quarter",
+            ]
+        )
 
     dim = pd.DataFrame(all_rows).drop_duplicates(subset=["date_key"])
     return dim.sort_values("date_key").reset_index(drop=True)
@@ -375,41 +484,43 @@ def _try_write_hyper(tableau_dir: Path, ticker: str) -> None:
     try:
         with (
             HyperProcess(Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp,
-            Connection(
-                hp.endpoint, str(hyper_path), CreateMode.CREATE_AND_REPLACE
-            ) as con,
+            Connection(hp.endpoint, str(hyper_path), CreateMode.CREATE_AND_REPLACE) as con,
         ):
-                schema = TableDefinition(
-                    TableName("Extract", "fact_financials"),
-                    [
-                        TableDefinition.Column("ticker",       SqlType.text()),
-                        TableDefinition.Column("line_item",    SqlType.text()),
-                        TableDefinition.Column("period_end",   SqlType.date()),
-                        TableDefinition.Column("fiscal_year",  SqlType.int()),
-                        TableDefinition.Column("fiscal_period",SqlType.text()),
-                        TableDefinition.Column("value",        SqlType.double()),
-                        TableDefinition.Column("accession_no", SqlType.text()),
-                        TableDefinition.Column("filing_url",   SqlType.text()),
-                    ],
-                )
-                con.catalog.create_table(schema)
+            schema = TableDefinition(
+                TableName("Extract", "fact_financials"),
+                [
+                    TableDefinition.Column("ticker", SqlType.text()),
+                    TableDefinition.Column("line_item", SqlType.text()),
+                    TableDefinition.Column("period_end", SqlType.date()),
+                    TableDefinition.Column("fiscal_year", SqlType.int()),
+                    TableDefinition.Column("fiscal_period", SqlType.text()),
+                    TableDefinition.Column("value", SqlType.double()),
+                    TableDefinition.Column("accession_no", SqlType.text()),
+                    TableDefinition.Column("filing_url", SqlType.text()),
+                ],
+            )
+            con.catalog.create_table(schema)
 
-                fin_csv = tableau_dir / "fact_financials.csv"
-                if fin_csv.exists():
-                    df = pd.read_csv(fin_csv)
-                    with Inserter(con, schema) as ins:
-                        for _, row in df.iterrows():
-                            ins.add_row([
+            fin_csv = tableau_dir / "fact_financials.csv"
+            if fin_csv.exists():
+                df = pd.read_csv(fin_csv)
+                with Inserter(con, schema) as ins:
+                    for _, row in df.iterrows():
+                        ins.add_row(
+                            [
                                 str(row.get("ticker", "")),
                                 str(row.get("line_item", "")),
                                 str(row.get("period_end", ""))[:10],
-                                int(row.get("fiscal_year", 0)) if pd.notna(row.get("fiscal_year")) else 0,
+                                int(row.get("fiscal_year", 0))
+                                if pd.notna(row.get("fiscal_year"))
+                                else 0,
                                 str(row.get("fiscal_period", "")),
                                 float(row.get("value", 0.0)) if pd.notna(row.get("value")) else 0.0,
                                 str(row.get("accession_no", "") or ""),
                                 str(row.get("filing_url", "") or ""),
-                            ])
-                        ins.execute()
+                            ]
+                        )
+                    ins.execute()
 
         logger.info("Hyper extract written: %s", hyper_path)
 
@@ -550,6 +661,7 @@ any non-public data sources.
 
 # ── Main export function ───────────────────────────────────────────────────────
 
+
 def export(ticker: str | None = None) -> dict[str, Path]:
     """Export all Tableau artifacts for the given ticker.
 
@@ -568,7 +680,7 @@ def export(ticker: str | None = None) -> dict[str, Path]:
         config: dict[str, Any] = yaml.safe_load(fh)
 
     resolved_ticker = (ticker or str(config["ticker"])).upper().strip()
-    fy_end_month    = int(config.get("fiscal_year_end_month", 12))
+    fy_end_month = int(config.get("fiscal_year_end_month", 12))
 
     db_path = _PROCESSED_DIR / f"{resolved_ticker}.duckdb"
     if not db_path.exists():

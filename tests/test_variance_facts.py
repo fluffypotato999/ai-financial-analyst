@@ -17,7 +17,6 @@ from unittest.mock import patch
 
 import duckdb
 import pandas as pd
-import pytest
 import yaml
 
 from src.build_variance_facts import build
@@ -93,15 +92,17 @@ def _write_forecast_parquet(models_dir: Path, ticker: str, period_end: str) -> N
     """Write a minimal forecast parquet with three model rows for testing."""
     models_dir.mkdir(parents=True, exist_ok=True)
     pe = pd.Timestamp(period_end)
-    df = pd.DataFrame({
-        "model":         ["prophet", "autoarima", "lasso"],
-        "period_end":    [pe, pe, pe],
-        "yhat":          [1_800_000_000.0, 1_900_000_000.0, 1_700_000_000.0],
-        "yhat_lower_80": [1_600_000_000.0] * 3,
-        "yhat_upper_80": [2_000_000_000.0] * 3,
-        "yhat_lower_95": [1_500_000_000.0] * 3,
-        "yhat_upper_95": [2_100_000_000.0] * 3,
-    })
+    df = pd.DataFrame(
+        {
+            "model": ["prophet", "autoarima", "lasso"],
+            "period_end": [pe, pe, pe],
+            "yhat": [1_800_000_000.0, 1_900_000_000.0, 1_700_000_000.0],
+            "yhat_lower_80": [1_600_000_000.0] * 3,
+            "yhat_upper_80": [2_000_000_000.0] * 3,
+            "yhat_lower_95": [1_500_000_000.0] * 3,
+            "yhat_upper_95": [2_100_000_000.0] * 3,
+        }
+    )
     df.to_parquet(models_dir / f"{ticker}_baseline_forecasts.parquet", index=False)
 
 
@@ -146,15 +147,13 @@ def test_yoy_growth_pct_non_null(tmp_path: Path) -> None:
     build(ticker="PANW", db_path=db_path)
     con = duckdb.connect(str(db_path), read_only=True)
     try:
-        row = con.execute(
-            "SELECT revenue_yoy_growth_pct FROM v_variance_facts"
-        ).fetchone()
+        row = con.execute("SELECT revenue_yoy_growth_pct FROM v_variance_facts").fetchone()
     finally:
         con.close()
     # Fixture has FY2023 and FY2025 Q1 → YoY available
     assert row is not None
     # May be null if prior-year quarter not in fixture — just check no exception
-    assert isinstance(row[0], (float, int, type(None)))
+    assert isinstance(row[0], float | int | type(None))
 
 
 def test_revenue_variance_vs_forecast_with_parquets(tmp_path: Path) -> None:
@@ -199,9 +198,9 @@ def test_revenue_variance_vs_forecast_with_parquets(tmp_path: Path) -> None:
     if pd.notna(forecast_val) and pd.notna(variance_val):
         # median of [1.8B, 1.9B, 1.7B] = 1.8B
         expected_median = 1_800_000_000.0
-        assert abs(float(forecast_val) - expected_median) < 1.0, (
-            f"Expected median forecast ~$1.8B, got {forecast_val}"
-        )
+        assert (
+            abs(float(forecast_val) - expected_median) < 1.0
+        ), f"Expected median forecast ~$1.8B, got {forecast_val}"
         expected_variance = actual_revenue - expected_median
         assert abs(float(variance_val) - expected_variance) < 1.0, (
             f"revenue_variance_vs_forecast mismatch: "
@@ -238,9 +237,9 @@ def test_forecast_model_column_populated(tmp_path: Path) -> None:
     model_str = df["revenue_prior_forecast_model"].iloc[0]
     if pd.notna(model_str):
         # Should contain at least one of the three model names
-        assert any(m in str(model_str) for m in ("prophet", "autoarima", "lasso")), (
-            f"Expected model name in '{model_str}'"
-        )
+        assert any(
+            m in str(model_str) for m in ("prophet", "autoarima", "lasso")
+        ), f"Expected model name in '{model_str}'"
 
 
 def test_consensus_null_when_no_csv(tmp_path: Path) -> None:
@@ -259,6 +258,6 @@ def test_consensus_null_when_no_csv(tmp_path: Path) -> None:
     finally:
         con.close()
 
-    assert pd.isna(df["revenue_consensus"].iloc[0]), (
-        "revenue_consensus should be NULL when no consensus CSV exists"
-    )
+    assert pd.isna(
+        df["revenue_consensus"].iloc[0]
+    ), "revenue_consensus should be NULL when no consensus CSV exists"

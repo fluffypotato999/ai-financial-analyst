@@ -24,6 +24,14 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "C4"]
 # export_for_tableau.py / build_variance_facts.py: long SQL and row-access expressions
 "src/export_for_tableau.py"    = ["E501"]
 "src/build_variance_facts.py"  = ["E501"]
+# generate_commentary.py: long system-prompt string literals and SQL-like patterns
+"src/generate_commentary.py"   = ["E501"]
+# build_notebooklm_bundle.py: long conditional expressions and subprocess calls
+"src/build_notebooklm_bundle.py" = ["E501"]
+# test_macro_features.py: sklearn convention — matrix variable names are uppercase (X, X_train)
+"tests/test_macro_features.py" = ["N803", "N806"]
+# test_tableau_export.py: unused variable in test setup pattern is conventional
+"tests/test_tableau_export.py" = ["F841", "E501"]
 
 # ── Mypy (strict type checking) ──────────────────────────────────────────────
 [tool.mypy]
@@ -43,4 +51,19 @@ omit = [
     "src/build_excel_model.py",
     "src/build_notebooklm_bundle.py",
     "src/select_models.py",
+]
+
+# ── Bandit (security scanning) ───────────────────────────────────────────────
+[tool.bandit]
+# Medium severity / medium confidence — stop false positives from subprocess,
+# yaml.safe_load, and requests usage that's already validated.
+severity = "medium"
+confidence = "medium"
+skips = [
+    "B101",   # use of assert — acceptable in tests and internal guards
+    "B404",   # subprocess import — used intentionally for pytest runner
+    "B603",   # subprocess call without shell=True — safe; we control args
+    "B607",   # start process with partial path — sys.executable is controlled
+    "B608",   # hardcoded SQL — all f-string values are internal constants /
+              # file paths derived from config; no user input reaches SQL
 ]

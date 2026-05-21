@@ -39,6 +39,7 @@ CLI::
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import re
@@ -54,27 +55,33 @@ import yaml
 logger = logging.getLogger(__name__)
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-_REPO_ROOT     = Path(__file__).resolve().parents[1]
-_CONFIG_PATH   = _REPO_ROOT / "config" / "company.yaml"
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_CONFIG_PATH = _REPO_ROOT / "config" / "company.yaml"
 _PROCESSED_DIR = _REPO_ROOT / "data" / "processed"
 _DASHBOARD_DIR = _REPO_ROOT / "dashboard"
 
 # ── Hallucination-guard regex patterns (from Prompt 8 spec) ──────────────────
-_DOLLAR_PAT       = re.compile(r"-?\$\d+(?:\.\d+)?(?:[KMB])?")
-_PERCENT_PAT      = re.compile(r"-?\d+(?:\.\d+)?%")
-_YEAR_PAT         = re.compile(r"\b(?:19|20)\d{2}\b")
-_ACCESSION_PAT    = re.compile(r"\d{10}-\d{2}-\d{6}")
-_PARENS_NEG_DOLL  = re.compile(r"\$\(\s*\d")
-_PARENS_NEG_PCT   = re.compile(r"\(\s*-?\d+(?:\.\d+)?\s*%\s*\)")
-_BARE_NUMBER_PAT  = re.compile(
-    r"\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b"   # comma-grouped: 1,234 / 1,234.5
-    r"|\b\d+\.\d+\b"                        # decimals: 1.5 / 12.30
-    r"|\b[1-9]\d{3,}\b"                     # 4+ digit integers: 8400, 12000
+_DOLLAR_PAT = re.compile(r"-?\$\d+(?:\.\d+)?(?:[KMB])?")
+_PERCENT_PAT = re.compile(r"-?\d+(?:\.\d+)?%")
+_YEAR_PAT = re.compile(r"\b(?:19|20)\d{2}\b")
+_ACCESSION_PAT = re.compile(r"\d{10}-\d{2}-\d{6}")
+_PARENS_NEG_DOLL = re.compile(r"\$\(\s*\d")
+_PARENS_NEG_PCT = re.compile(r"\(\s*-?\d+(?:\.\d+)?\s*%\s*\)")
+_BARE_NUMBER_PAT = re.compile(
+    r"\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b"  # comma-grouped: 1,234 / 1,234.5
+    r"|\b\d+\.\d+\b"  # decimals: 1.5 / 12.30
+    r"|\b[1-9]\d{3,}\b"  # 4+ digit integers: 8400, 12000
 )
 
 _FORBIDDEN_WORDS = (
-    "billion", "million", "thousand",
-    "bps", "basis point", "percentage point", "pct point", "pp ",
+    "billion",
+    "million",
+    "thousand",
+    "bps",
+    "basis point",
+    "percentage point",
+    "pct point",
+    "pp ",
 )
 
 _SYSTEM_PROMPT = """You are a financial analyst writing internal CFO-style variance commentary. STRICT OUTPUT RULES:
@@ -94,6 +101,7 @@ _SYSTEM_PROMPT = """You are a financial analyst writing internal CFO-style varia
 
 # ── Custom exceptions ──────────────────────────────────────────────────────────
 
+
 class RefusalError(RuntimeError):
     """Raised when pipeline refuses to generate commentary (see Step 2)."""
 
@@ -103,6 +111,7 @@ class HallucinationError(RuntimeError):
 
 
 # ── Step 1: Pull from DuckDB ──────────────────────────────────────────────────
+
 
 def _pull_variance_data(db_path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return (variance_row, quality_row) dicts from DuckDB.
@@ -131,11 +140,12 @@ def _pull_variance_data(db_path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         raise RuntimeError("v_variance_facts returned 0 rows — run build_variance_facts first.")
 
     variance_row: dict[str, Any] = dict(vf.iloc[0])
-    quality_row:  dict[str, Any] = dict(dq.iloc[0]) if not dq.empty else {}
+    quality_row: dict[str, Any] = dict(dq.iloc[0]) if not dq.empty else {}
     return variance_row, quality_row
 
 
 # ── Step 2: Refusal checks ────────────────────────────────────────────────────
+
 
 def _check_refusals(variance_row: dict[str, Any], quality_row: dict[str, Any]) -> None:
     """Raise RefusalError if any data-integrity condition is violated.
@@ -154,15 +164,18 @@ def _check_refusals(variance_row: dict[str, Any], quality_row: dict[str, Any]) -
     """
     # Restatement check
     has_restatement = quality_row.get("has_restatement", False)
-    if has_restatement and str(has_restatement).upper() not in ("FALSE", "0", "NONE", ""):
-        if bool(has_restatement):
-            raise RefusalError(
-                "REFUSED: v_data_quality.has_restatement=TRUE — a 10-K/A amendment was filed. "
-                "Numbers may be in flux. Re-run after the amended filing is incorporated."
-            )
+    if (
+        has_restatement
+        and str(has_restatement).upper() not in ("FALSE", "0", "NONE", "")
+        and bool(has_restatement)
+    ):
+        raise RefusalError(
+            "REFUSED: v_data_quality.has_restatement=TRUE — a 10-K/A amendment was filed. "
+            "Numbers may be in flux. Re-run after the amended filing is incorporated."
+        )
 
     # Missing quarters check
-    missing = quality_row.get("missing_quarters", None)
+    missing = quality_row.get("missing_quarters")
     if missing is not None and not pd.isna(missing) and str(missing).strip():
         raise RefusalError(
             f"REFUSED: v_data_quality.missing_quarters='{missing}' — the variance window "
@@ -180,6 +193,7 @@ def _check_refusals(variance_row: dict[str, Any], quality_row: dict[str, Any]) -
 
 
 # ── Step 3: Pre-format numbers ────────────────────────────────────────────────
+
 
 def _fmt_dollars(val: float | None) -> str | None:
     """Format a dollar value to canonical $<digits><suffix> form.
@@ -248,10 +262,12 @@ def _build_payload(
     """
     accession = str(variance_row.get("revenue_actual_accession") or "")
     filing_url = str(variance_row.get("revenue_actual_filing_url") or "")
-    fact_id    = str(variance_row.get("revenue_actual_fact_id") or "")
-    model_str  = str(variance_row.get("revenue_prior_forecast_model") or "N/A")
+    fact_id = str(variance_row.get("revenue_actual_fact_id") or "")
+    model_str = str(variance_row.get("revenue_prior_forecast_model") or "N/A")
 
-    def _entry(fmt_val: str | None, *, fact_id_val: str = "", accession_val: str = "") -> dict[str, Any]:
+    def _entry(
+        fmt_val: str | None, *, fact_id_val: str = "", accession_val: str = ""
+    ) -> dict[str, Any]:
         e: dict[str, Any] = {"value": fmt_val}
         if fact_id_val:
             e["fact_id"] = fact_id_val
@@ -265,7 +281,6 @@ def _build_payload(
         "fiscal_year": int(variance_row.get("fiscal_year") or 0),
         "fiscal_period": str(variance_row.get("fiscal_period") or ""),
         "latest_period_end": str(variance_row.get("latest_period_end") or "")[:10],
-
         # Revenue actuals
         "revenue": _entry(
             _fmt_dollars(variance_row.get("revenue_actual")),
@@ -274,31 +289,35 @@ def _build_payload(
         ),
         "revenue_yoy": _entry(_fmt_dollars(variance_row.get("revenue_yoy"))),
         "revenue_yoy_growth_pct": _entry(_fmt_pct(variance_row.get("revenue_yoy_growth_pct"))),
-
         # Forecast comparison
         "revenue_prior_forecast": _entry(_fmt_dollars(variance_row.get("revenue_prior_forecast"))),
-        "revenue_variance_vs_forecast": _entry(_fmt_dollars(variance_row.get("revenue_variance_vs_forecast"))),
-        "revenue_variance_pct_vs_forecast": _entry(_fmt_pct(variance_row.get("revenue_variance_pct_vs_forecast"))),
+        "revenue_variance_vs_forecast": _entry(
+            _fmt_dollars(variance_row.get("revenue_variance_vs_forecast"))
+        ),
+        "revenue_variance_pct_vs_forecast": _entry(
+            _fmt_pct(variance_row.get("revenue_variance_pct_vs_forecast"))
+        ),
         "revenue_prior_forecast_model": model_str,
-
         # Consensus
         "revenue_consensus": _entry(_fmt_dollars(variance_row.get("revenue_consensus"))),
-
         # Gross margin
         "gross_margin_pct_actual": _entry(_fmt_pct(variance_row.get("gross_margin_pct_actual"))),
         "gross_margin_pct_yoy": _entry(_fmt_pct(variance_row.get("gross_margin_pct_yoy"))),
-        "gross_margin_pct_yoy_delta": _entry(_fmt_pct(variance_row.get("gross_margin_pct_yoy_delta"))),
-
+        "gross_margin_pct_yoy_delta": _entry(
+            _fmt_pct(variance_row.get("gross_margin_pct_yoy_delta"))
+        ),
         # Operating margin
-        "operating_margin_pct_actual": _entry(_fmt_pct(variance_row.get("operating_margin_pct_actual"))),
+        "operating_margin_pct_actual": _entry(
+            _fmt_pct(variance_row.get("operating_margin_pct_actual"))
+        ),
         "operating_margin_pct_yoy": _entry(_fmt_pct(variance_row.get("operating_margin_pct_yoy"))),
-        "operating_margin_pct_yoy_delta": _entry(_fmt_pct(variance_row.get("operating_margin_pct_yoy_delta"))),
-
+        "operating_margin_pct_yoy_delta": _entry(
+            _fmt_pct(variance_row.get("operating_margin_pct_yoy_delta"))
+        ),
         # Free cash flow
         "fcf_actual": _entry(_fmt_dollars(variance_row.get("fcf_actual"))),
         "fcf_yoy": _entry(_fmt_dollars(variance_row.get("fcf_yoy"))),
         "fcf_yoy_growth_pct": _entry(_fmt_pct(variance_row.get("fcf_yoy_growth_pct"))),
-
         # Data quality context
         "has_restatement": bool(quality_row.get("has_restatement", False)),
         "has_physical_inventory": bool(quality_row.get("has_physical_inventory", False)),
@@ -307,6 +326,7 @@ def _build_payload(
 
 
 # ── Step 4: Call Claude ───────────────────────────────────────────────────────
+
 
 def _call_claude(payload: dict[str, Any]) -> str:
     """Invoke Claude to generate narrative commentary.
@@ -349,6 +369,7 @@ def _call_claude(payload: dict[str, Any]) -> str:
 
 
 # ── Step 5: Hallucination guard ───────────────────────────────────────────────
+
 
 def _parse_canonical_dollars(token: str) -> float:
     """Parse a canonical dollar token to a float.
@@ -404,18 +425,13 @@ def _extract_input_values(payload: dict[str, Any]) -> tuple[list[float], set[str
     def _walk(obj: Any) -> None:
         if isinstance(obj, dict):
             val = obj.get("value")
-            if isinstance(val, str):
-                if val and val not in ("None", "null"):
-                    if "$" in val:
-                        try:
-                            values.append(_parse_canonical_dollars(val))
-                        except ValueError:
-                            pass
-                    elif "%" in val:
-                        try:
-                            values.append(_parse_canonical_pct(val))
-                        except ValueError:
-                            pass
+            if isinstance(val, str) and val and val not in ("None", "null"):
+                if "$" in val:
+                    with contextlib.suppress(ValueError):
+                        values.append(_parse_canonical_dollars(val))
+                elif "%" in val:
+                    with contextlib.suppress(ValueError):
+                        values.append(_parse_canonical_pct(val))
             acc = obj.get("accession")
             if isinstance(acc, str) and _ACCESSION_PAT.search(acc):
                 accessions.add(acc)
@@ -475,9 +491,7 @@ def run_hallucination_guard(text: str, payload: dict[str, Any]) -> None:
     text_lower = text.lower()
     for word in _FORBIDDEN_WORDS:
         if word in text_lower:
-            raise HallucinationError(
-                f"Guard FAIL — forbidden word-form '{word}' found in output."
-            )
+            raise HallucinationError(f"Guard FAIL — forbidden word-form '{word}' found in output.")
 
     # (d) Parens-negative detection
     if _PARENS_NEG_DOLL.search(text):
@@ -505,7 +519,7 @@ def run_hallucination_guard(text: str, payload: dict[str, Any]) -> None:
             )
 
         # Citation check: must find [accession_no] within 50 chars after token
-        after = text[m.end(): m.end() + 50]
+        after = text[m.end() : m.end() + 50]
         cite_match = re.search(r"\[(\d{10}-\d{2}-\d{6}(?:,\s*\d{10}-\d{2}-\d{6})*)\]", after)
         if not cite_match:
             raise HallucinationError(
@@ -535,14 +549,14 @@ def run_hallucination_guard(text: str, payload: dict[str, Any]) -> None:
     # (e) Bare-number check (must be inside $... or ...% or be a 4-digit year)
     year_spans = {m.span() for m in _YEAR_PAT.finditer(text)}
     dollar_spans = {m.span() for m in _DOLLAR_PAT.finditer(text)}
-    pct_spans    = {m.span() for m in _PERCENT_PAT.finditer(text)}
+    pct_spans = {m.span() for m in _PERCENT_PAT.finditer(text)}
 
     for m in _BARE_NUMBER_PAT.finditer(text):
         span = m.span()
         # Accept if it overlaps with a year, dollar token, or percent token
-        in_year   = any(ys[0] <= span[0] and span[1] <= ys[1] for ys in year_spans)
+        in_year = any(ys[0] <= span[0] and span[1] <= ys[1] for ys in year_spans)
         in_dollar = any(ds[0] <= span[0] and span[1] <= ds[1] for ds in dollar_spans)
-        in_pct    = any(ps[0] <= span[0] and span[1] <= ps[1] for ps in pct_spans)
+        in_pct = any(ps[0] <= span[0] and span[1] <= ps[1] for ps in pct_spans)
         if not (in_year or in_dollar or in_pct):
             raise HallucinationError(
                 f"Guard FAIL — bare number '{m.group()}' found (not inside $... or ...% token, "
@@ -551,6 +565,7 @@ def run_hallucination_guard(text: str, payload: dict[str, Any]) -> None:
 
 
 # ── Step 6: Save output ───────────────────────────────────────────────────────
+
 
 def _save_commentary(ticker: str, text: str) -> Path:
     """Write commentary markdown to dashboard/{ticker}_exec_commentary_<DATE>.md.
@@ -570,6 +585,7 @@ def _save_commentary(ticker: str, text: str) -> Path:
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
+
 
 def generate(
     ticker: str | None = None,
@@ -675,15 +691,21 @@ if __name__ == "__main__":
     )
     parser.add_argument("--ticker", default=None, help="Ticker symbol (e.g. PANW)")
     parser.add_argument(
-        "--dry-run", action="store_true", default=False,
+        "--dry-run",
+        action="store_true",
+        default=False,
         help="Print the prompt without calling the API (default behaviour unless --live)",
     )
     parser.add_argument(
-        "--live", action="store_true", default=False,
+        "--live",
+        action="store_true",
+        default=False,
         help="Actually call the Anthropic API (requires ANTHROPIC_API_KEY)",
     )
     parser.add_argument(
-        "--verify-only", metavar="PATH", default=None,
+        "--verify-only",
+        metavar="PATH",
+        default=None,
         help="Re-run the guard on an existing commentary file (CI use)",
     )
     args = parser.parse_args()

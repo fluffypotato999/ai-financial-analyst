@@ -26,11 +26,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from src.generate_commentary import RefusalError, _check_refusals, _build_payload, run_hallucination_guard
+from src.generate_commentary import (
+    RefusalError,
+    _build_payload,
+    _check_refusals,
+    run_hallucination_guard,
+)
 
 _FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -137,9 +142,7 @@ def test_volume_driven_driver_detected() -> None:
 def test_volume_driven_commentary_contains_driver() -> None:
     """Volume scenario: mock commentary contains 'volume'."""
     fx = _load("01_volume_driven.json")
-    payload = _build_payload(
-        fx["ticker"], fx["variance_facts"], fx["quality_facts"]
-    )
+    payload = _build_payload(fx["ticker"], fx["variance_facts"], fx["quality_facts"])
     commentary = _make_mock_commentary("volume", payload)
     assert "volume" in commentary.lower(), "Commentary must mention 'volume'"
 
@@ -205,9 +208,9 @@ def test_one_time_commentary_contains_driver() -> None:
     fx = _load("03_one_time.json")
     payload = _build_payload(fx["ticker"], fx["variance_facts"], fx["quality_facts"])
     commentary = _make_mock_commentary("one-time", payload)
-    assert "one-time" in commentary.lower() or "one time" in commentary.lower(), (
-        "Commentary must mention 'one-time'"
-    )
+    assert (
+        "one-time" in commentary.lower() or "one time" in commentary.lower()
+    ), "Commentary must mention 'one-time'"
 
 
 def test_one_time_guard_passes() -> None:
@@ -239,10 +242,15 @@ def test_mix_commentary_contains_hedge() -> None:
     fx = _load("04_mix_not_computable.json")
     payload = _build_payload(fx["ticker"], fx["variance_facts"], fx["quality_facts"])
     commentary = _make_mock_commentary("mix_not_computable", payload)
-    hedge_phrases = ["not computable", "cannot be determined", "mix shift", "not computable from consolidated"]
-    assert any(p in commentary.lower() for p in hedge_phrases), (
-        f"Commentary must hedge on mix shift. Got: {commentary[:200]}"
-    )
+    hedge_phrases = [
+        "not computable",
+        "cannot be determined",
+        "mix shift",
+        "not computable from consolidated",
+    ]
+    assert any(
+        p in commentary.lower() for p in hedge_phrases
+    ), f"Commentary must hedge on mix shift. Got: {commentary[:200]}"
 
 
 def test_mix_commentary_does_not_pick_definitive_driver() -> None:
@@ -252,9 +260,9 @@ def test_mix_commentary_does_not_pick_definitive_driver() -> None:
     commentary = _make_mock_commentary("mix_not_computable", payload)
     # The mock produces the correct hedge; verify it doesn't claim "volume growth"
     # or "margin expansion" as the *primary* driver without the hedge
-    assert "not computable" in commentary.lower() or "mix shift" in commentary.lower(), (
-        "Commentary must acknowledge the mix-not-computable condition"
-    )
+    assert (
+        "not computable" in commentary.lower() or "mix shift" in commentary.lower()
+    ), "Commentary must acknowledge the mix-not-computable condition"
 
 
 def test_mix_no_refusal() -> None:
@@ -275,7 +283,6 @@ def test_restatement_pipeline_refuses() -> None:
 
 def test_restatement_never_calls_api() -> None:
     """Restatement scenario: pipeline exits before any Anthropic API call."""
-    import anthropic
 
     call_log: list[str] = []
 
@@ -292,9 +299,7 @@ def test_restatement_never_calls_api() -> None:
         with pytest.raises(RefusalError):
             _check_refusals(fx["variance_facts"], fx["quality_facts"])
 
-    assert not call_log, (
-        "Anthropic API must NOT be called when has_restatement=TRUE"
-    )
+    assert not call_log, "Anthropic API must NOT be called when has_restatement=TRUE"
 
 
 # ── Rubric summary (printed when run directly) ────────────────────────────────
@@ -305,11 +310,11 @@ if __name__ == "__main__":
 
     print("\nEval Harness — Mechanical Driver Scenarios\n" + "=" * 45)
     scenarios = [
-        ("01_volume_driven.json",     "volume",           "volume"),
-        ("02_margin_driven.json",     "margin",           "margin"),
-        ("03_one_time.json",          "one-time",         "one-time"),
-        ("04_mix_not_computable.json","mix_not_computable","not computable"),
-        ("05_restatement.json",       None,               "REFUSED"),
+        ("01_volume_driven.json", "volume", "volume"),
+        ("02_margin_driven.json", "margin", "margin"),
+        ("03_one_time.json", "one-time", "one-time"),
+        ("04_mix_not_computable.json", "mix_not_computable", "not computable"),
+        ("05_restatement.json", None, "REFUSED"),
     ]
     all_pass = True
     for fname, expected_driver, expected_phrase in scenarios:

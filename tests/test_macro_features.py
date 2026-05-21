@@ -13,12 +13,11 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-
 # ── Stub feature engineering (mirrors notebook 03 logic) ─────────────────────
+
 
 def _build_feature_matrix(revenue_series: list[float]) -> pd.DataFrame:
     """Construct the same feature matrix as notebook 03 without live data.

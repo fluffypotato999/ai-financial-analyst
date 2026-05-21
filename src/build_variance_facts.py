@@ -37,11 +37,11 @@ import yaml
 logger = logging.getLogger(__name__)
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-_REPO_ROOT     = Path(__file__).resolve().parents[1]
-_CONFIG_PATH   = _REPO_ROOT / "config" / "company.yaml"
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_CONFIG_PATH = _REPO_ROOT / "config" / "company.yaml"
 _PROCESSED_DIR = _REPO_ROOT / "data" / "processed"
-_MODELS_DIR    = _REPO_ROOT / "models"
-_TABLEAU_DIR   = _REPO_ROOT / "dashboard" / "tableau_data"
+_MODELS_DIR = _REPO_ROOT / "models"
+_TABLEAU_DIR = _REPO_ROOT / "dashboard" / "tableau_data"
 
 # ── SQL template ───────────────────────────────────────────────────────────────
 # The view is parameterised with Python f-string literals only for path
@@ -333,7 +333,7 @@ def build(ticker: str | None = None, db_path: Path | None = None) -> Path:
         )
 
     forecast_paths = _find_forecast_parquets(resolved_ticker)
-    has_forecasts  = len(forecast_paths) > 0
+    has_forecasts = len(forecast_paths) > 0
 
     con = duckdb.connect(str(db_path))
     try:
@@ -354,7 +354,9 @@ def build(ticker: str | None = None, db_path: Path | None = None) -> Path:
             )
             # Replace the placeholder glob reference
             sql = sql.replace(f"read_parquet({glob_expr!r})", f"read_parquet({glob_expr})")
-            logger.info("Building v_variance_facts with %d forecast parquet(s)", len(forecast_paths))
+            logger.info(
+                "Building v_variance_facts with %d forecast parquet(s)", len(forecast_paths)
+            )
         else:
             sql = _SQL_VARIANCE_FACTS_NO_FORECAST
             logger.warning(
@@ -374,12 +376,17 @@ def build(ticker: str | None = None, db_path: Path | None = None) -> Path:
             fcst_b = (row.get("revenue_prior_forecast") or 0) / 1e9
             var_pct = (row.get("revenue_variance_pct_vs_forecast") or 0) * 100
             yoy_pct = (row.get("revenue_yoy_growth_pct") or 0) * 100
-            models  = row.get("revenue_prior_forecast_model") or "N/A"
+            models = row.get("revenue_prior_forecast_model") or "N/A"
             logger.info(
                 "Latest quarter: %s %s | Revenue=$%.2fB | Forecast=$%.2fB "
                 "| Variance=%.1f%% | YoY=%.1f%% | Models=%s",
-                row.get("fiscal_year"), row.get("fiscal_period"),
-                rev_b, fcst_b, var_pct, yoy_pct, models,
+                row.get("fiscal_year"),
+                row.get("fiscal_period"),
+                rev_b,
+                fcst_b,
+                var_pct,
+                yoy_pct,
+                models,
             )
 
     finally:
