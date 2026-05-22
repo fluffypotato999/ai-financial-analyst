@@ -149,9 +149,10 @@ preliminary-to-final value drift is handled silently.
 
 ## Dashboard
 
-**Tableau Public dashboard:** run `make dashboard TICKER=PANW` to generate the
-CSVs in `dashboard/tableau_data/`, then upload to Tableau Public following
-`dashboard/Tableau_Setup.md`. Once published, replace this line with the URL.
+**Tableau Public dashboard:** https://public.tableau.com/app/profile/sid.den/viz/PANW-Financial-Dashboard/Dashboard1
+
+To regenerate: run `make dashboard TICKER=PANW` to refresh the CSVs in
+`dashboard/tableau_data/`, then republish following `dashboard/Tableau_Setup.md`.
 
 Sheets in the workbook:
 
