@@ -314,8 +314,6 @@ def _build_payload(
             _fmt_pct(variance_row.get("revenue_variance_pct_vs_forecast"))
         ),
         "revenue_prior_forecast_model": model_str,
-        # Consensus
-        "revenue_consensus": _entry(_fmt_dollars(variance_row.get("revenue_consensus"))),
         # Gross margin
         "gross_margin_pct_actual": _entry(_fmt_pct(variance_row.get("gross_margin_pct_actual"))),
         "gross_margin_pct_yoy": _entry(_fmt_pct(variance_row.get("gross_margin_pct_yoy"))),

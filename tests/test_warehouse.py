@@ -12,6 +12,7 @@ from typing import Any
 from unittest.mock import patch
 
 import duckdb
+import pandas as pd
 import yaml
 
 from src.build_warehouse import build, query_summary
@@ -214,3 +215,118 @@ def test_data_quality_row_count(tmp_path: Path) -> None:
     finally:
         con.close()
     assert len(df) == 1
+
+
+# ── missing_quarters scalar ───────────────────────────────────────────────────
+# These tests bypass the EDGAR JSON path and write a raw_financials parquet
+# directly so each scenario can pin a specific (line_item, quarter) gap.
+
+
+_LOAD_BEARING = ("Revenue", "OperatingIncome", "OperatingCashFlow", "NetIncome")
+_QUARTERS = (
+    (2024, "Q1", "2024-01-31"),
+    (2024, "Q2", "2024-04-30"),
+    (2024, "Q3", "2024-07-31"),
+    (2024, "Q4", "2024-10-31"),
+)
+
+
+def _row(line_item: str, fy: int, fp: str, period_end: str, val: float) -> dict[str, Any]:
+    """Build a single synthetic raw_financials row."""
+    accn = f"0000000000-{fy % 100:02d}-000001"
+    return {
+        "ticker": "TEST",
+        "line_item": line_item,
+        "concept_used": line_item,
+        "period_end": period_end,
+        "period_type": "Q",
+        "fiscal_year": fy,
+        "fiscal_period": fp,
+        "value": val,
+        "unit": "USD",
+        "accession_no": accn,
+        "fact_id": f"{line_item}-{fy}-{fp}",
+        "filing_url": f"https://example.test/{accn}/",
+        "form_type": "10-Q",
+        "filed_date": period_end,
+        "frame": f"CY{fy}{fp}",
+    }
+
+
+def _build_synthetic_warehouse(rows: list[dict[str, Any]], tmp_path: Path) -> Path:
+    """Write rows to a parquet + minimal company.yaml, then build the warehouse."""
+    df = pd.DataFrame(rows)
+    parquet_path = tmp_path / "TEST_financials.parquet"
+    df.to_parquet(parquet_path, index=False)
+
+    config_path = tmp_path / "company.yaml"
+    with config_path.open("w") as fh:
+        yaml.dump(
+            {
+                "cik": "0000000000",
+                "cik_int": 0,
+                "ticker": "TEST",
+                "name": "Test",
+                "fiscal_year_end_month": 10,
+                "fiscal_year_end_day": 31,
+                "sector_etf": "XLK",
+            },
+            fh,
+        )
+
+    with (
+        patch("src.build_warehouse._CONFIG_PATH", config_path),
+        patch("src.build_warehouse._PROCESSED_DIR", tmp_path),
+    ):
+        return build(ticker="TEST")
+
+
+def _missing_quarters(db_path: Path) -> str | None:
+    """Return missing_quarters scalar from v_data_quality."""
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        row = con.execute("SELECT missing_quarters FROM v_data_quality").fetchone()
+    finally:
+        con.close()
+    assert row is not None
+    return row[0]
+
+
+def test_missing_quarters_empty_when_complete(tmp_path: Path) -> None:
+    """All load-bearing line items present for every quarter → missing_quarters empty."""
+    rows = [
+        _row(li, fy, fp, end, 1_000_000.0) for li in _LOAD_BEARING for (fy, fp, end) in _QUARTERS
+    ]
+    db_path = _build_synthetic_warehouse(rows, tmp_path)
+    missing = _missing_quarters(db_path)
+    # Empty string OR NULL — both are handled correctly by the refusal branch.
+    assert not missing, f"expected empty/NULL, got {missing!r}"
+
+
+def test_missing_quarters_flags_revenue_gap(tmp_path: Path) -> None:
+    """Revenue missing for FY2024Q2 → missing_quarters contains 'FY2024Q2'."""
+    rows = [
+        _row(li, fy, fp, end, 1_000_000.0)
+        for li in _LOAD_BEARING
+        for (fy, fp, end) in _QUARTERS
+        if not (li == "Revenue" and fp == "Q2")
+    ]
+    db_path = _build_synthetic_warehouse(rows, tmp_path)
+    missing = _missing_quarters(db_path)
+    assert (
+        missing is not None and "FY2024Q2" in missing
+    ), f"expected FY2024Q2 in missing_quarters, got {missing!r}"
+
+
+def test_missing_quarters_ignores_inventory_gap(tmp_path: Path) -> None:
+    """Only Inventory missing → missing_quarters empty (Inventory is excluded)."""
+    rows = [
+        _row(li, fy, fp, end, 1_000_000.0) for li in _LOAD_BEARING for (fy, fp, end) in _QUARTERS
+    ]
+    # Inventory present for three quarters, missing for Q2 — must NOT be flagged.
+    rows.extend(
+        _row("Inventory", fy, fp, end, 50_000.0) for (fy, fp, end) in _QUARTERS if fp != "Q2"
+    )
+    db_path = _build_synthetic_warehouse(rows, tmp_path)
+    missing = _missing_quarters(db_path)
+    assert not missing, f"expected empty/NULL (Inventory excluded), got {missing!r}"

@@ -94,7 +94,6 @@ def _build_company_overview(ticker: str, config: dict[str, Any]) -> str:
         "## Data Sources",
         "- **Financial data:** SEC EDGAR XBRL structured facts (free, public)",
         "- **Macro features:** FRED (Federal Reserve Economic Data, free API)",
-        "- **Consensus:** yfinance analyst estimates (where available)",
         "",
         "## How to use this bundle in NotebookLM",
         "Upload all files in this folder as sources. Then ask:",

@@ -1,8 +1,8 @@
 """Tests for src/export_for_tableau.py.
 
 Uses the same DuckDB fixture-build helpers as test_warehouse.py.
-All tests run offline — no yfinance or FRED network calls are made
-(consensus falls back to empty stub; ETF return is not exercised here).
+All tests run offline — no FRED network calls are made
+(ETF return is not exercised here).
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ from src.build_warehouse import build as build_warehouse
 from src.export_for_tableau import (
     _export_dim_filing,
     _export_dim_metric,
-    _export_fact_consensus,
     _export_fact_financials,
     _export_fact_forecasts,
     _fiscal_to_calendar_quarter,
@@ -220,26 +219,6 @@ def test_fact_forecasts_loads_parquet(tmp_path: Path) -> None:
     assert (df["model"] == "prophet").all()
 
 
-# ── _export_fact_consensus ────────────────────────────────────────────────────
-
-
-def test_fact_consensus_returns_stub_when_yfinance_fails() -> None:
-    """When yfinance raises, consensus must return empty stub without crashing."""
-    with patch("yfinance.Ticker", side_effect=Exception("network error")):
-        df = _export_fact_consensus("PANW")
-    assert isinstance(df, pd.DataFrame)
-    assert len(df) == 0
-
-
-def test_fact_consensus_empty_stub_has_required_columns() -> None:
-    """Empty stub must have the expected column schema."""
-    from src.export_for_tableau import _empty_consensus_stub
-
-    df = _empty_consensus_stub()
-    for col in ("ticker", "period", "revenue_consensus", "n_analysts", "source"):
-        assert col in df.columns
-
-
 # ── Full export integration ────────────────────────────────────────────────────
 
 
@@ -260,7 +239,6 @@ def test_export_writes_all_csv_files(tmp_path: Path) -> None:
     for name in (
         "fact_financials",
         "fact_forecasts",
-        "fact_consensus",
         "dim_date",
         "dim_metric",
         "dim_filing",

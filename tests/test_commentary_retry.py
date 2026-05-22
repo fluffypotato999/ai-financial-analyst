@@ -41,7 +41,6 @@ def _fake_pull(_db_path: Path) -> tuple[dict, dict]:  # type: ignore[type-arg]
         "revenue_prior_forecast_model": "Prophet",
         "revenue_variance_vs_forecast": 50_000_000,
         "revenue_variance_pct_vs_forecast": 0.022,
-        "revenue_consensus": 2_280_000_000,
         "gross_margin_pct_actual": 0.74,
         "gross_margin_pct_yoy": 0.71,
         "gross_margin_pct_yoy_delta": 0.03,

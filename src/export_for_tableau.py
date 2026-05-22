@@ -1,10 +1,9 @@
 """Export pipeline artifacts to Tableau-ready CSVs (and optional Hyper extract).
 
-Generates six files in ``/dashboard/tableau_data/``:
+Generates five files in ``/dashboard/tableau_data/``:
 
 * ``fact_financials.csv``  — long-format quarterly actuals with provenance columns
 * ``fact_forecasts.csv``   — combined Prophet + AutoARIMA + Lasso forecasts
-* ``fact_consensus.csv``   — yfinance analyst consensus (empty stub if unavailable)
 * ``dim_date.csv``         — date dimension (fiscal + calendar)
 * ``dim_metric.csv``       — metric metadata (label, category, unit)
 * ``dim_filing.csv``       — one row per accession_no (provenance dimension)
@@ -26,7 +25,6 @@ CLI::
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -324,64 +322,6 @@ def _export_fact_forecasts(ticker: str) -> pd.DataFrame:
     return combined.sort_values(["model", "period_end"]).reset_index(drop=True)
 
 
-def _export_fact_consensus(ticker: str) -> pd.DataFrame:
-    """Fetch analyst revenue consensus from yfinance.
-
-    Wraps all yfinance access in try/except — the yfinance API changes
-    frequently and AttributeError/KeyError are normal.  Returns an empty
-    stub DataFrame on any failure.
-    """
-    try:
-        import yfinance as yf  # noqa: PLC0415
-
-        stock = yf.Ticker(ticker)
-        try:
-            earnings = stock.earnings_estimate
-        except (AttributeError, KeyError, ValueError, json.JSONDecodeError) as exc:
-            logger.warning("yfinance earnings_estimate failed: %s", exc)
-            earnings = None
-
-        if earnings is None or (isinstance(earnings, pd.DataFrame) and earnings.empty):
-            logger.info("No consensus data available for %s — writing empty stub.", ticker)
-            return _empty_consensus_stub()
-
-        rows: list[dict[str, Any]] = []
-        if isinstance(earnings, pd.DataFrame):
-            for period_str, row in earnings.iterrows():
-                avg_val = row.get("avg") if isinstance(row, pd.Series) else None
-                if avg_val is not None and pd.notna(avg_val):
-                    rows.append(
-                        {
-                            "ticker": ticker,
-                            "period": str(period_str),
-                            "revenue_consensus": float(avg_val),
-                            "n_analysts": row.get("numberOfAnalysts", None),
-                            "source": "yfinance",
-                        }
-                    )
-
-        if not rows:
-            return _empty_consensus_stub()
-
-        return pd.DataFrame(rows)
-
-    except Exception as exc:
-        logger.warning("yfinance consensus fetch failed: %s — writing empty stub.", exc)
-        return _empty_consensus_stub()
-
-
-def _empty_consensus_stub() -> pd.DataFrame:
-    return pd.DataFrame(
-        columns=[
-            "ticker",
-            "period",
-            "revenue_consensus",
-            "n_analysts",
-            "source",
-        ]
-    )
-
-
 def _export_dim_date(
     df_financials: pd.DataFrame,
     df_forecasts: pd.DataFrame,
@@ -540,13 +480,12 @@ def _write_tableau_setup_md(output_dir: Path, ticker: str) -> None:
 
 ## 1. File Overview
 
-The `/dashboard/tableau_data/` folder contains six files:
+The `/dashboard/tableau_data/` folder contains five files:
 
 | File | Description |
 |---|---|
 | `fact_financials.csv` | Long-format quarterly actuals (all line items) with provenance |
 | `fact_forecasts.csv` | Prophet + AutoARIMA + Lasso forecasts with 80%/95% CIs |
-| `fact_consensus.csv` | Analyst consensus estimates (empty stub if not available) |
 | `dim_date.csv` | Date dimension: fiscal year/quarter + calendar year/quarter |
 | `dim_metric.csv` | Metric metadata: label, category, unit |
 | `dim_filing.csv` | One row per `accession_no` with `filing_url`, `form_type`, `filed_date` |
@@ -711,14 +650,6 @@ def export(ticker: str | None = None) -> dict[str, Path]:
     df_fcst.to_csv(p, index=False)
     outputs["fact_forecasts"] = p
     logger.info("  %d rows → %s", len(df_fcst), p)
-
-    # ── fact_consensus ─────────────────────────────────────────────────────────
-    logger.info("Exporting fact_consensus (yfinance)...")
-    df_cons = _export_fact_consensus(resolved_ticker)
-    p = _TABLEAU_DIR / "fact_consensus.csv"
-    df_cons.to_csv(p, index=False)
-    outputs["fact_consensus"] = p
-    logger.info("  %d rows → %s", len(df_cons), p)
 
     # ── dim_date ───────────────────────────────────────────────────────────────
     logger.info("Exporting dim_date...")

@@ -8,13 +8,12 @@
 
 ## 1. File Overview
 
-The `/dashboard/tableau_data/` folder contains six files:
+The `/dashboard/tableau_data/` folder contains five files:
 
 | File | Description |
 |---|---|
 | `fact_financials.csv` | Long-format quarterly actuals (all line items) with provenance |
 | `fact_forecasts.csv` | Prophet + AutoARIMA + Lasso forecasts with 80%/95% CIs |
-| `fact_consensus.csv` | Analyst consensus estimates (empty stub if not available) |
 | `dim_date.csv` | Date dimension: fiscal year/quarter + calendar year/quarter |
 | `dim_metric.csv` | Metric metadata: label, category, unit |
 | `dim_filing.csv` | One row per `accession_no` with `filing_url`, `form_type`, `filed_date` |

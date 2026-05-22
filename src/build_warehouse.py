@@ -10,7 +10,8 @@ into a local DuckDB file and creates six analytical views:
 * ``v_key_metrics``                — margins, YoY/QoQ growth rates, FCF
 * ``v_restatement_details``        — rows where a /A filing materially restates
 * ``v_missing_coverage``           — (line_item, quarter) combinations with no data
-* ``v_data_quality``               — one-row summary: has_physical_inventory, has_restatement
+* ``v_data_quality``               — one-row summary: has_physical_inventory,
+                                     has_restatement, missing_quarters, ...
 
 ``v_variance_facts`` is intentionally deferred to Prompt 7.5 — it depends on
 forecast parquets that do not exist until Prompts 5/6.
@@ -361,7 +362,16 @@ SELECT
     (SELECT COUNT(*) > 0 FROM raw_financials
      WHERE line_item = 'GoingConcernDoubt' AND value IS NOT NULL)                      AS has_going_concern_doubt,
     (SELECT COUNT(*) > 0 FROM raw_financials
-     WHERE line_item = 'MaterialWeakness' AND value IS NOT NULL)                       AS has_material_weakness
+     WHERE line_item = 'MaterialWeakness' AND value IS NOT NULL)                       AS has_material_weakness,
+    -- missing_quarters: comma-separated 'FY<year><Qn>' for any (line_item, quarter)
+    -- gap among the load-bearing line items.  Restricted to Revenue / OperatingIncome
+    -- / OperatingCashFlow / NetIncome so legitimately-missing items (e.g. Inventory
+    -- on a pure-SaaS company) do not trigger downstream refusals.
+    (SELECT STRING_AGG(DISTINCT 'FY' || fiscal_year || fiscal_period, ','
+                       ORDER BY 'FY' || fiscal_year || fiscal_period)
+     FROM v_missing_coverage
+     WHERE line_item IN ('Revenue', 'OperatingIncome',
+                         'OperatingCashFlow', 'NetIncome'))                            AS missing_quarters
 """
 
 # Ordered list of all views to create — order matters (dependencies first).
