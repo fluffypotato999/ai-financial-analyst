@@ -13,7 +13,6 @@
     "revenue_prior_forecast": 2000000000.0,
     "revenue_variance_vs_forecast": 12000000.0,
     "revenue_variance_pct_vs_forecast": 0.006,
-    "revenue_consensus": null,
     "gross_profit_actual": 1430000000.0,
     "gross_margin_pct_actual": 0.711,
     "gross_margin_pct_yoy": 0.681,

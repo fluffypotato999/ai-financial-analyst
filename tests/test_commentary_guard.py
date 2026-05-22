@@ -107,7 +107,7 @@ def test_guard_accepts_dollar_value_in_parenthetical() -> None:
     """
     with pytest.raises(HallucinationError):
         # Either parens-negative OR value mismatch is acceptable
-        _guard(f"Operating income ($87.5M [{_VALID_ACCESSION}]) exceeded consensus.")
+        _guard(f"Operating income ($87.5M [{_VALID_ACCESSION}]) was the highlight.")
 
 
 # ── Bare-number tests ─────────────────────────────────────────────────────────
