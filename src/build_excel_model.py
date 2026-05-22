@@ -318,13 +318,41 @@ def _forecast_periods(
     has_inv: bool,
     n_fcst: int = _N_FCST,
 ) -> list[dict[str, float]]:
-    """Compute n_fcst forecast periods.  Returns list of row dicts.
+    """Compute n_fcst forecast periods. Returns list of row dicts.
 
-    Cash is the BALANCING item derived from the CF statement.
-    BalanceCheck = TotalAssets − (TotalLiabilities + TotalEquity).
-    By construction, BalanceCheck = 0 for each forecast period when
-    the starting period satisfies the accounting identity and DeferredRev
-    is held flat.  Numeric proof: see module docstring.
+    Cash is the BALANCING item derived from the CF statement (indirect method):
+    Cash_t = Cash_{t-1} + OCF_t + InvestingCF_t + FinancingCF_t.
+
+    BalanceCheck = TotalAssets − (TotalLiabilities + TotalEquity) = 0 for each
+    forecast period when the starting period satisfies the accounting identity
+    AND all three of the following invariants hold within this function:
+
+      1. ``DeferredRevenue`` is held flat across forecast periods
+         (``dr_t = state["deferred_rev"]``).
+      2. ``OtherLiabilities`` (the long-term liability residual
+         ``TotalLiabilities − AP − DeferredRevenue``) is held flat.
+      3. ``OtherAssets`` (the long-term asset residual
+         ``TotalAssets − Cash − AR − Inventory``) is rolled forward as
+         ``prior + capex − depreciation``. This is what closes the identity
+         when capex ≠ depreciation; holding it flat would leak the difference
+         into BalanceCheck each quarter.
+
+    These invariants are exercised end-to-end by
+    ``tests/test_excel_balance_check.py``, which asserts |BalanceCheck| < $1M
+    across every forecast quarter × scenario for synthetic inputs.
+
+    Args:
+        hist_is:     Historical income-statement frame (last row = t-1 anchor).
+        hist_bs:     Historical balance-sheet frame (last row = t-1 anchor).
+        hist_cf:     Historical cash-flow frame; supplies the flat depreciation
+                     rate.
+        assumptions: Scenario parameters from ``_compute_base_assumptions`` /
+                     ``_make_scenarios``.
+        has_inv:     Whether the company carries physical inventory.
+        n_fcst:      Number of forecast quarters to project.
+
+    Returns:
+        One dict per forecast quarter with IS, BS, CF, and BalanceCheck fields.
     """
     ass = assumptions
 
