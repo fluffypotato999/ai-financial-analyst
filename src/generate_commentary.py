@@ -163,6 +163,8 @@ def _check_refusals(variance_row: dict[str, Any], quality_row: dict[str, Any]) -
 
     Conditions:
     - ``has_restatement`` is TRUE in v_data_quality (10-K/A filed; numbers in flux)
+    - ``has_going_concern_doubt`` is TRUE (auditor flagged substantial doubt)
+    - ``has_material_weakness`` is TRUE (material weakness in ICFR disclosed)
     - ``missing_quarters`` is non-empty covering the variance window
     - fiscal_year or fiscal_period is None/NaN in variance data
 
@@ -178,6 +180,20 @@ def _check_refusals(variance_row: dict[str, Any], quality_row: dict[str, Any]) -
         raise RefusalError(
             "REFUSED: v_data_quality.has_restatement=TRUE — a 10-K/A amendment was filed. "
             "Numbers may be in flux. Re-run after the amended filing is incorporated."
+        )
+
+    # Going-concern doubt check
+    if _is_truthy(quality_row.get("has_going_concern_doubt", False)):
+        raise RefusalError(
+            "REFUSED: v_data_quality.has_going_concern_doubt=TRUE — auditor flagged "
+            "substantial doubt about going-concern. Requires human review."
+        )
+
+    # Material-weakness in ICFR check
+    if _is_truthy(quality_row.get("has_material_weakness", False)):
+        raise RefusalError(
+            "REFUSED: v_data_quality.has_material_weakness=TRUE — material weakness "
+            "in ICFR disclosed. Requires human review."
         )
 
     # Missing quarters check
