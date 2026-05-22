@@ -4,7 +4,6 @@ Covers:
 - v_variance_facts is created with correct columns
 - YoY growth computes correctly from fixture data
 - revenue_variance_vs_forecast equals actual − median(forecasts) within $1
-- When consensus CSV is empty stub, revenue_consensus is NULL (not an error)
 - All three forecast models populate prior_forecast contributions
 """
 
@@ -32,7 +31,6 @@ _REQUIRED_COLUMNS = {
     "revenue_actual",
     "revenue_prior_forecast",
     "revenue_yoy",
-    "revenue_consensus",
     "revenue_variance_vs_forecast",
     "revenue_variance_pct_vs_forecast",
     "revenue_yoy_growth_pct",
@@ -392,27 +390,6 @@ def test_forecast_model_column_populated(tmp_path: Path) -> None:
         assert any(
             m in str(model_str) for m in ("prophet", "autoarima", "lasso")
         ), f"Expected model name in '{model_str}'"
-
-
-def test_consensus_null_when_no_csv(tmp_path: Path) -> None:
-    """revenue_consensus must be NULL (not an error) when consensus CSV is absent."""
-    db_path = _build_db("panw_companyfacts.json", "PANW", 1327567, tmp_path)
-    empty_tableau_dir = tmp_path / "tableau_data"
-    empty_tableau_dir.mkdir()
-    # No fact_consensus.csv written
-
-    with patch("src.build_variance_facts._TABLEAU_DIR", empty_tableau_dir):
-        build(ticker="PANW", db_path=db_path)
-
-    con = duckdb.connect(str(db_path), read_only=True)
-    try:
-        df = con.execute("SELECT revenue_consensus FROM v_variance_facts").fetchdf()
-    finally:
-        con.close()
-
-    assert pd.isna(
-        df["revenue_consensus"].iloc[0]
-    ), "revenue_consensus should be NULL when no consensus CSV exists"
 
 
 # ── Billings (derived) ─────────────────────────────────────────────────────────

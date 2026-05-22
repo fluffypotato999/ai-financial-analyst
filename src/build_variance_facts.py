@@ -1,16 +1,15 @@
 """Build ``v_variance_facts`` — deferred from Prompt 3.
 
-This view depends on forecast parquets (Prompts 5/6) and consensus CSVs
-(Prompt 7) that did not exist when the warehouse was first built.  It is
-intentionally built after all upstream artifacts are in place.
+This view depends on forecast parquets (Prompts 5/6) that did not exist
+when the warehouse was first built.  It is intentionally built after all
+upstream artifacts are in place.
 
 ``v_variance_facts`` computes the following for the most-recently-reported
 quarter:
 
 * Actual revenue vs prior forecast (median of all available models)
 * Actual revenue vs prior year (YoY)
-* Actual revenue vs analyst consensus (NULL when no consensus)
-* Same triple for gross_margin_pct, operating_margin_pct, free_cash_flow
+* Same pair for gross_margin_pct, operating_margin_pct, free_cash_flow
 * Derived billings (``revenue + ΔDeferredRevenue``) and YoY billings growth
 
 All arithmetic happens in SQL/Python — Claude never receives raw inputs.
@@ -50,7 +49,6 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 _CONFIG_PATH = _REPO_ROOT / "config" / "company.yaml"
 _PROCESSED_DIR = _REPO_ROOT / "data" / "processed"
 _MODELS_DIR = _REPO_ROOT / "models"
-_TABLEAU_DIR = _REPO_ROOT / "dashboard" / "tableau_data"
 
 # ── SQL template ───────────────────────────────────────────────────────────────
 # The view is parameterised with Python f-string literals only for path
@@ -183,14 +181,6 @@ forecast_med AS (
                                   AS revenue_prior_forecast_model
     FROM read_parquet({forecast_glob!r})
     WHERE CAST(period_end AS DATE) = (SELECT CAST(period_end AS DATE) FROM latest_q)
-),
-
--- Analyst consensus (NULL when file is empty or period not found)
-consensus AS (
-    SELECT revenue_consensus
-    FROM {consensus_table}
-    WHERE 1 = 0  -- placeholder; overridden if consensus CSV has rows
-    LIMIT 1
 )
 
 SELECT
@@ -202,7 +192,6 @@ SELECT
     l.revenue_actual,
     fm.revenue_prior_forecast,
     yoy_q.revenue_yoy,
-    NULL::DOUBLE                   AS revenue_consensus,  -- populated when consensus has data
 
     -- Revenue variances
     l.revenue_actual - fm.revenue_prior_forecast
@@ -386,7 +375,6 @@ SELECT
     l.revenue_actual,
     NULL::DOUBLE              AS revenue_prior_forecast,
     yoy_q.revenue_yoy,
-    NULL::DOUBLE              AS revenue_consensus,
     NULL::DOUBLE              AS revenue_variance_vs_forecast,
     NULL::DOUBLE              AS revenue_variance_pct_vs_forecast,
     (l.revenue_actual - yoy_q.revenue_yoy)
@@ -453,27 +441,6 @@ def _find_forecast_parquets(ticker: str) -> list[Path]:
     return [p for p in candidates if p.exists()]
 
 
-def _load_consensus_revenue(ticker: str, period_end: str) -> float | None:
-    """Return analyst revenue consensus for a specific period_end, or None."""
-    consensus_path = _TABLEAU_DIR / "fact_consensus.csv"
-    if not consensus_path.exists():
-        return None
-    try:
-        df = pd.read_csv(consensus_path)
-        if df.empty or "revenue_consensus" not in df.columns:
-            return None
-        # fact_consensus may use 'period' not 'period_end'
-        pe_col = "period_end" if "period_end" in df.columns else "period"
-        match = df[df[pe_col].astype(str).str[:10] == str(period_end)[:10]]
-        if match.empty:
-            return None
-        val = match["revenue_consensus"].iloc[0]
-        return float(val) if pd.notna(val) else None
-    except Exception as exc:
-        logger.warning("Could not load consensus: %s", exc)
-        return None
-
-
 def build(ticker: str | None = None, db_path: Path | None = None) -> Path:
     """Create ``v_variance_facts`` in the existing DuckDB warehouse.
 
@@ -518,10 +485,7 @@ def build(ticker: str | None = None, db_path: Path | None = None) -> Path:
                 # Pass as list string
                 glob_expr = "[" + ", ".join(f"'{p}'" for p in parquet_list) + "]"
 
-            sql = _SQL_VARIANCE_FACTS.format(
-                forecast_glob=glob_expr,
-                consensus_table="(SELECT NULL::DOUBLE AS revenue_consensus WHERE 1=0)",
-            )
+            sql = _SQL_VARIANCE_FACTS.format(forecast_glob=glob_expr)
             # Replace the placeholder glob reference
             sql = sql.replace(f"read_parquet({glob_expr!r})", f"read_parquet({glob_expr})")
             logger.info(

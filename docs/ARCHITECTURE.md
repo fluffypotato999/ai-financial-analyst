@@ -154,7 +154,6 @@ fact_financials ──► dim_date
                 ──► dim_filing (accession_no → filing_url tooltip)
 
 fact_forecasts  ──► dim_date
-fact_consensus  ──► dim_date
 ```
 
 `dim_filing` enables Tableau tooltip click-through to SEC EDGAR. Every data point can

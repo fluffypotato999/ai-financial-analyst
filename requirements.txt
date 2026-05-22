@@ -16,7 +16,7 @@ shap==0.46.0
 
 # ── External data ─────────────────────────────────────────────────────────────
 requests==2.32.3
-yfinance==0.2.50       # consensus estimates (Prompt 7)
+yfinance==0.2.50       # ETF total returns for macro features (notebook 03)
 fredapi==0.5.2         # FRED macro data (Prompt 6)
 
 # ── Config & serialisation ────────────────────────────────────────────────────
