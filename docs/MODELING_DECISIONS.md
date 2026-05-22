@@ -12,9 +12,9 @@ and the trade-offs considered. It is written for a technical interviewer who mig
 narrative only. Every number cited in the commentary must appear verbatim in the
 input JSON.
 
-**Rationale:** The Anthropic blog post
-["Building LLM applications for production"](https://www.anthropic.com/) cites Kepler
-Finance's pattern as a best practice for financial applications: *"In finance, the model
+**Rationale:** A common pattern in production financial LLM applications (sometimes
+called the "reasoning vs. computation split") is to do all arithmetic in deterministic
+code and let the model write narrative only. The motivation: *"in finance, the model
 can't be the whole system."* LLMs are unreliable calculators — they hallucinate numeric
 outputs, particularly with large dollar amounts, percentage conversions, and YoY
 arithmetic. Pre-computing all variances in Python and feeding formatted strings (e.g.
