@@ -8,41 +8,72 @@ the failure modes each layer defends against.
 
 ## System overview
 
-```
-SEC EDGAR XBRL API
-      │
-      ▼
-src/ingest_edgar.py ──────────────────────────────► data/processed/{TICKER}.parquet
-  [7 provenance columns per fact]                           │
-  concept synonym mapping                                   │
-  form-priority deduplication                               ▼
-  restatement detection (10-K/A only)             src/build_warehouse.py
-                                                   [DuckDB analytics layer]
-                                                           │
-                    ┌──────────────────────────────────────┤
-                    │                                      │
-                    ▼                                      ▼
-    notebooks/02_baseline_forecast.ipynb      src/build_excel_model.py
-    notebooks/03_macro_regularized_forecast    [3-statement model]
-                    │                                      │
-                    ▼                                      │
-         models/{TICKER}_*.parquet                         │
-                    │                                      │
-                    ├──────────────────────────────────────┘
-                    ▼
-         src/build_variance_facts.py ──► v_variance_facts (DuckDB view)
-                    │
-                    ▼
-         src/export_for_tableau.py ──► dashboard/tableau_data/ (6 CSVs)
-                    │
-                    ▼
-         src/generate_commentary.py ──► dashboard/{TICKER}_exec_commentary_{DATE}.md
-          [reasoning-vs-computation split]
-          [hallucination guard]
-          [refusal-on-restatement]
-                    │
-                    ▼
-         src/build_notebooklm_bundle.py ──► dashboard/notebooklm_bundle/ (10 files)
+```mermaid
+flowchart LR
+    SEC[("SEC EDGAR<br/>XBRL")]
+    FRED[("FRED API<br/>macro series")]
+    YF[("yfinance<br/>ETF returns")]
+
+    ING["ingest_edgar.py<br/>7 provenance columns<br/>form-priority dedup"]
+    PARQUET[("{TICKER}.parquet")]
+    WH[("DuckDB<br/>v_* views")]
+
+    BASE["nb/02 baseline_forecast<br/>Prophet + AutoARIMA"]
+    MACRO["nb/03 macro_regularized<br/>Lasso + FRED"]
+    FCST[("models/*.parquet<br/>forecast medians + CIs")]
+    VAR["build_variance_facts.py"]
+    VVF[("v_variance_facts")]
+
+    GATE{{"Refusal checks"}}
+    STOP[["Refused — exit 1"]]
+
+    EXC["build_excel_model.py<br/>3-statement"]
+    TAB["export_for_tableau.py"]
+    CMT["generate_commentary.py<br/>reasoning-vs-computation split"]
+    GUARD[/"Hallucination guard"/]
+    NLM["build_notebooklm_bundle.py"]
+
+    XLSX[("{TICKER}_model.xlsx")]
+    CSVS[("tableau_data/<br/>5 CSVs + .hyper")]
+    PUB[("Tableau Public<br/>dashboard")]
+    MD[("{TICKER}_exec_commentary.md")]
+    BUNDLE[("notebooklm_bundle/")]
+
+    SEC --> ING --> PARQUET --> WH
+    WH --> BASE --> FCST
+    WH --> MACRO
+    FRED --> MACRO
+    YF --> MACRO
+    MACRO --> FCST
+    WH --> VAR
+    FCST --> VAR
+    VAR --> VVF
+    VVF --> GATE
+    GATE -->|refuse| STOP
+    GATE -->|clean| CMT
+    WH --> EXC
+    FCST --> EXC
+    EXC --> XLSX
+    WH --> TAB --> CSVS
+    CSVS -.->|manual<br/>publish| PUB
+    CMT --> GUARD
+    GUARD -->|fail| CMT
+    GUARD -->|pass| MD
+    XLSX --> NLM
+    MD --> NLM
+    FCST --> NLM
+    WH --> NLM
+    NLM --> BUNDLE
+
+    classDef source fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
+    classDef pipeline fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef guard fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#14532d
+
+    class SEC,FRED,YF source
+    class ING,BASE,MACRO,VAR,EXC,TAB,CMT,NLM pipeline
+    class GATE,GUARD,STOP guard
+    class PARQUET,WH,FCST,VVF,XLSX,CSVS,PUB,MD,BUNDLE output
 ```
 
 ---

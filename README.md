@@ -33,6 +33,86 @@ This project automates the financial analyst workflow end-to-end:
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    %% Sources
+    SEC[("SEC EDGAR<br/>XBRL")]
+    FRED[("FRED API<br/>macro series")]
+    YF[("yfinance<br/>ETF returns")]
+
+    %% Ingestion / warehouse
+    ING["ingest_edgar.py<br/>7 provenance columns<br/>form-priority dedup"]
+    WH[("DuckDB warehouse<br/>v_income_statement<br/>v_balance_sheet<br/>v_cash_flow<br/>v_data_quality")]
+
+    %% Forecast notebooks
+    BASE["nb/02 baseline_forecast<br/>Prophet + AutoARIMA"]
+    MACRO["nb/03 macro_regularized<br/>Lasso + FRED + yfinance"]
+    FCST[("models/*.parquet<br/>forecast medians + CIs")]
+
+    %% Variance + refusal
+    VAR["build_variance_facts.py"]
+    VVF[("v_variance_facts<br/>actuals + forecasts +<br/>derived metrics")]
+    GATE{{"Refusal checks<br/>restatement / GC / MW /<br/>missing quarters"}}
+    STOP[["Refused — exit 1"]]
+
+    %% Build artifacts
+    EXC["build_excel_model.py<br/>3-statement + Sources"]
+    TAB["export_for_tableau.py<br/>star schema CSVs"]
+    CMT["generate_commentary.py<br/>reasoning-vs-computation"]
+    GUARD[/"Hallucination guard<br/>parse-then-compare"/]
+    NLM["build_notebooklm_bundle.py"]
+
+    %% Outputs
+    XLSX[("&lt;TICKER&gt;_model.xlsx")]
+    CSVS[("tableau_data/<br/>5 CSVs + .hyper")]
+    PUB[("Tableau Public<br/>dashboard")]
+    MD[("&lt;TICKER&gt;_exec_commentary.md")]
+    BUNDLE[("notebooklm_bundle/<br/>10 files")]
+
+    %% Edges
+    SEC --> ING --> WH
+    WH --> BASE --> FCST
+    WH --> MACRO
+    FRED --> MACRO
+    YF --> MACRO
+    MACRO --> FCST
+    WH --> VAR
+    FCST --> VAR
+    VAR --> VVF
+    VVF --> GATE
+    GATE -->|refuse| STOP
+    GATE -->|clean| CMT
+    WH --> EXC
+    FCST --> EXC
+    EXC --> XLSX
+    WH --> TAB --> CSVS
+    CSVS -.->|manual<br/>publish| PUB
+    CMT --> GUARD
+    GUARD -->|fail| CMT
+    GUARD -->|pass| MD
+    XLSX --> NLM
+    MD --> NLM
+    FCST --> NLM
+    WH --> NLM
+    NLM --> BUNDLE
+
+    %% Styling
+    classDef source fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
+    classDef pipeline fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef guard fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#14532d
+
+    class SEC,FRED,YF source
+    class ING,BASE,MACRO,VAR,EXC,TAB,CMT,NLM pipeline
+    class GATE,GUARD,STOP guard
+    class WH,FCST,VVF,XLSX,CSVS,PUB,MD,BUNDLE output
+```
+
+The dotted arrow `tableau_data → Tableau Public` is a manual operator step (open `.hyper` in Tableau Desktop, republish). All other edges are automated pipeline steps.
+
+<details>
+<summary>Plain-text version (for environments where Mermaid does not render)</summary>
+
 ```
 SEC EDGAR XBRL                FRED API           yfinance
      │                           │                   │
@@ -43,8 +123,7 @@ src/ingest_edgar.py ──────► src/build_warehouse.py (DuckDB)
    form_type, filed_date)           ├── v_balance_sheet_quarterly
                                     ├── v_cash_flow_quarterly
                                     ├── v_key_metrics
-                                    ├── v_data_quality (has_physical_inventory,
-                                    │                   has_restatement)
+                                    ├── v_data_quality
                                     └── v_variance_facts (post-forecast)
                                          │
                     ┌────────────────────┼───────────────────────┐
@@ -57,14 +136,15 @@ src/ingest_edgar.py ──────► src/build_warehouse.py (DuckDB)
                                     ▼                            ▼
                          src/generate_commentary.py      export_for_tableau.py
                           ┌──────────────────────────┐         │
-                          │ STEP 1: Python computes   │         ▼
-                          │   all variances in SQL    │   Tableau Public
-                          │ STEP 2: refusal checks    │   (dim_filing tooltips
-                          │ STEP 3: pre-format JSON   │    link to EDGAR)
-                          │ STEP 4: Claude → narrative│
-                          │ STEP 5: hallucination guard│
+                          │ STEP 1: Pull from DuckDB  │         ▼
+                          │ STEP 2: Refusal checks    │   Tableau Public
+                          │ STEP 3: Pre-format JSON   │   (dim_filing tooltips
+                          │ STEP 4: Claude → narrative│    link to EDGAR)
+                          │ STEP 5: Hallucination guard│
                           └──────────────────────────┘
 ```
+
+</details>
 
 **Key architectural invariant — reasoning vs. computation split:**
 All arithmetic happens in deterministic Python/SQL before Claude is called.
