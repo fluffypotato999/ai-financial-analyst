@@ -3,11 +3,6 @@
 > End-to-end AI-augmented financial forecasting for US-listed enterprise security
 > and software vendors, built entirely on free public data (SEC EDGAR + FRED).
 
-Demonstrated on **PANW** (hardware-plus-subscription hybrid: Strata appliances +
-Prisma SASE + Cortex XDR/XSIAM) and validated on **CRWD** and **SNOW** (pure-SaaS
-shape, no physical inventory).  One config change — `make demo TICKER=CRWD` —
-switches the entire pipeline to a different company.
-
 ---
 
 ## Overview
@@ -23,8 +18,8 @@ This project automates the financial analyst workflow end-to-end:
 4. **Excel model** — simplified three-statement model (Base/Bull/Bear scenarios)
    with a per-cell Sources sheet tracing every historical value to its filing
 5. **Dashboard** — Tableau Public dashboard with click-through to source filings
-6. **Commentary** — Claude-generated CFO-style variance commentary using the
-   reasoning-vs-computation split (all arithmetic in Python; Claude writes
+6. **Commentary** — AI-generated CFO-style variance commentary using the
+   reasoning-vs-computation split (all arithmetic in Python; the LLM writes
    narrative only, with inline accession-level citations)
 7. **Eval harness** — 5 ground-truth variance scenarios including
    refusal-on-restatement, tested in CI
@@ -139,7 +134,7 @@ src/ingest_edgar.py ──────► src/build_warehouse.py (DuckDB)
                           │ STEP 1: Pull from DuckDB  │         ▼
                           │ STEP 2: Refusal checks    │   Tableau Public
                           │ STEP 3: Pre-format JSON   │   (dim_filing tooltips
-                          │ STEP 4: Claude → narrative│    link to EDGAR)
+                          │ STEP 4: LLM → narrative   │    link to EDGAR)
                           │ STEP 5: Hallucination guard│
                           └──────────────────────────┘
 ```
@@ -147,46 +142,9 @@ src/ingest_edgar.py ──────► src/build_warehouse.py (DuckDB)
 </details>
 
 **Key architectural invariant — reasoning vs. computation split:**
-All arithmetic happens in deterministic Python/SQL before Claude is called.
-Claude generates narrative only.  Every number cited in the commentary must
+All arithmetic happens in deterministic Python/SQL before the LLM is called.
+The LLM generates narrative only.  Every number cited in the commentary must
 appear verbatim in the input JSON and traces back to an SEC accession number.
-
----
-
-## Setup
-
-```bash
-git clone https://github.com/fluffypotato999/ai-financial-analyst
-cd ai-financial-analyst
-make setup          # creates .venv, installs all dependencies
-cp .env.example .env
-# Fill in ANTHROPIC_API_KEY, FRED_API_KEY, SEC_USER_AGENT
-```
-
-> **cmdstan warning:** The first `make forecast` triggers a ~200 MB cmdstan
-> download and C++ compile (~5 min).  Pre-stage it once with:
-> ```bash
-> .venv/bin/python -c "import cmdstanpy; cmdstanpy.install_cmdstan()"
-> ```
-> Subsequent runs are instant.
-
----
-
-## Pipeline
-
-Run steps in order, or run everything with `make demo TICKER=PANW`:
-
-| Step | Command | What it does |
-|---|---|---|
-| 1 | `make ingest TICKER=PANW` | Fetch XBRL facts from SEC EDGAR → parquet |
-| 2 | `make warehouse TICKER=PANW` | Build DuckDB analytics views |
-| 3 | `make model TICKER=PANW` | Prophet + AutoARIMA forecasts |
-| 4 | `make forecast TICKER=PANW` | Lasso macro forecast + variance facts view |
-| 5 | `make dashboard TICKER=PANW` | Excel model + Tableau CSVs |
-| 6 | `make commentary TICKER=PANW` | LLM commentary (dry-run by default) |
-| 7 | `make notebooklm TICKER=PANW` | NotebookLM source bundle |
-
-For live API commentary: `make commentary TICKER=PANW LIVE=1`
 
 ---
 
@@ -252,10 +210,10 @@ clickable link to the SEC filing.
 `src/generate_commentary.py` follows a reasoning-vs-computation split — a
 common production pattern for LLMs over numeric data:
 
-1. Python pulls pre-computed variances from DuckDB — Claude never sees raw data
+1. Python pulls pre-computed variances from DuckDB — the LLM never sees raw data
 2. Refusal checks: restatement detected → exit non-zero, no API call
 3. Python pre-formats every number with its `accession_no`
-4. Claude writes narrative with inline citations (`[0001327567-26-000123]`)
+4. The LLM writes narrative with inline citations (`[0001327567-26-000123]`)
 5. Parse-then-compare hallucination guard validates every numeric token
 
 The guard catches: number fabrication, unit drift (M↔B), word-form numbers
@@ -270,7 +228,7 @@ Model selection happens at runtime via `/v1/models` — no hardcoded snapshot ID
 
 Five ground-truth variance scenarios in `tests/eval/fixtures/`. The harness exercises
 the **mechanical-driver detection logic and the hallucination-guard plumbing** end to
-end — Claude itself is *not* called from CI. Each scenario builds a synthetic
+end — the LLM itself is *not* called from CI. Each scenario builds a synthetic
 commentary string that exercises the relevant guard rule and asserts the expected
 refusal/driver outcome.
 
