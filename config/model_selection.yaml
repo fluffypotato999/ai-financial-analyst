@@ -27,7 +27,7 @@ fallback:
   planner: "claude-opus-4-1-20250805"
   narrator: "claude-sonnet-4-20250514"
 
-# Two-model split mirrors Kepler Finance's pattern:
+# Two-model split — common pattern for LLM-over-numerics pipelines:
 #   - opus-class for reasoning over the variance set
 #   - sonnet-class for templated per-line narrative generation
 # See /docs/MODELING_DECISIONS.md for rationale.
