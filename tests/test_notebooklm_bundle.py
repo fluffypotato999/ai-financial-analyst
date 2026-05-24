@@ -98,6 +98,51 @@ def test_download_sec_filing_removes_stale_txt_placeholder(tmp_path: Path) -> No
     )
 
 
+def test_download_sec_filing_removes_stale_pdf_when_filing_is_htm(tmp_path: Path) -> None:
+    """A non-PDF filing wipes any sibling .pdf left over from a prior run.
+
+    NotebookLM ingests every file in the bundle; leaving an old PDF next to
+    the new placeholder causes confusing dual citations.
+    """
+    pdf_dest = tmp_path / "02_latest_10K.pdf"
+    stale_pdf = pdf_dest
+    stale_pdf.write_bytes(b"%PDF-1.4 stale pdf bytes from prior run")
+    assert stale_pdf.exists()
+
+    fake_subs: dict[str, Any] = {
+        "filings": {
+            "recent": {
+                "form": ["10-K"],
+                "accessionNumber": ["0000000000-00-000000"],
+                "primaryDocument": ["panw-20250731.htm"],
+            }
+        }
+    }
+
+    class _FakeResp:
+        status_code = 200
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, Any]:
+            return fake_subs
+
+    def _fake_get(url: str, **_kwargs: Any) -> _FakeResp:
+        return _FakeResp()
+
+    with patch("src.build_notebooklm_bundle.requests.get", _fake_get):
+        ok = _download_sec_filing(1327567, "10-K", pdf_dest)
+
+    assert ok is True
+    placeholder = pdf_dest.with_suffix(".txt")
+    assert placeholder.exists(), "Placeholder .txt should be written for non-PDF filing"
+    assert not stale_pdf.exists(), (
+        f"Stale .pdf was not removed; bundle would include both "
+        f"{stale_pdf.name} and {placeholder.name}."
+    )
+
+
 def test_sample_commentary_renamed_and_banner_added(tmp_path: Path) -> None:
     """When the source commentary is *_SAMPLE*, bundle file embeds SAMPLE in name + banner.
 
