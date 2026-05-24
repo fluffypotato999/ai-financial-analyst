@@ -1,0 +1,129 @@
+name: Demo Pipeline
+
+# End-to-end pipeline run on a self-hosted macOS runner.
+# Defaults: ticker=PANW, dry-run commentary (no API call).
+# workflow_dispatch lets the operator override ticker, opt into live
+# commentary, and supply an Anthropic API key just for that run.
+#
+# FRED_API_KEY is sourced from the runner's ~/.ai-financial-analyst.env
+# (see "Load runner env file" step). The file is read on the runner only;
+# nothing is committed or pushed back.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: "Ticker symbol (e.g. PANW, CRWD)"
+        required: false
+        default: "PANW"
+        type: string
+      live_commentary:
+        description: "Run live commentary (calls Anthropic API)"
+        required: false
+        default: false
+        type: boolean
+      anthropic_api_key:
+        description: "Anthropic API key (only used when live_commentary=true; not stored)"
+        required: false
+        default: ""
+        type: string
+
+# Avoid stacking demo runs on the same self-hosted runner.
+concurrency:
+  group: demo-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  demo:
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 60
+
+    env:
+      TICKER: ${{ inputs.ticker || 'PANW' }}
+      LIVE: ${{ inputs.live_commentary && '1' || '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load runner env file (FRED_API_KEY etc.)
+        run: |
+          ENV_FILE="$HOME/.ai-financial-analyst.env"
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "::error::Missing $ENV_FILE on the runner. Place FRED_API_KEY there."
+            exit 1
+          fi
+          # Export each KEY=VALUE line into $GITHUB_ENV without echoing values.
+          while IFS='=' read -r key value; do
+            case "$key" in
+              ''|\#*) continue ;;
+            esac
+            # Strip surrounding quotes if present.
+            value="${value%\"}"; value="${value#\"}"
+            value="${value%\'}"; value="${value#\'}"
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
+            echo "::add-mask::$value"
+          done < "$ENV_FILE"
+          echo "Loaded env keys from $ENV_FILE"
+
+      - name: Inject Anthropic API key (live commentary only)
+        if: ${{ inputs.live_commentary && inputs.anthropic_api_key != '' }}
+        env:
+          INPUT_KEY: ${{ inputs.anthropic_api_key }}
+        run: |
+          echo "::add-mask::$INPUT_KEY"
+          echo "ANTHROPIC_API_KEY=$INPUT_KEY" >> "$GITHUB_ENV"
+
+      - name: Verify required env
+        run: |
+          : "${FRED_API_KEY:?FRED_API_KEY missing — check ~/.ai-financial-analyst.env on the runner}"
+          if [ -n "$LIVE" ] && [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "::error::live_commentary=true but no anthropic_api_key was provided"
+            exit 1
+          fi
+          echo "Ticker: $TICKER"
+          echo "Live commentary: ${LIVE:-no}"
+
+      - name: Setup virtualenv (idempotent)
+        run: |
+          if [ ! -x .venv/bin/python ]; then
+            make setup
+          else
+            echo ".venv exists — reusing"
+          fi
+
+      - name: Quality gate (ruff + pytest)
+        run: |
+          .venv/bin/ruff check src tests
+          .venv/bin/ruff format --check src tests
+          .venv/bin/python -m pytest -q
+
+      - name: Run demo
+        run: make demo TICKER="$TICKER" ${LIVE:+LIVE=1}
+
+      - name: Upload NotebookLM bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notebooklm_bundle-${{ env.TICKER }}-${{ github.run_number }}
+          path: dashboard/notebooklm_bundle/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload Tableau CSVs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tableau_data-${{ env.TICKER }}-${{ github.run_number }}
+          path: dashboard/tableau_data/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload Excel model
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: excel_model-${{ env.TICKER }}-${{ github.run_number }}
+          path: dashboard/${{ env.TICKER }}_3Statement_Model.xlsx
+          if-no-files-found: warn
+          retention-days: 30
