@@ -119,22 +119,30 @@ def _build_company_overview(ticker: str, config: dict[str, Any]) -> str:
 # ── File 04: Historical financials ────────────────────────────────────────────
 
 
-def _build_historical_financials(ticker: str) -> pd.DataFrame | None:
+def _build_historical_financials(ticker: str, fy_end_month: int = 12) -> pd.DataFrame | None:
     """Last 12 quarters with provenance, deduped by the canonical export logic.
 
     Reuses ``src.export_for_tableau._export_fact_financials`` so the bundle
-    inherits the same two invariants the Tableau export enforces:
+    inherits the same invariants the Tableau export enforces:
 
       1. Multi-fiscal-year comparatives are collapsed to one row per
          (ticker, line_item, period_end) — newer 10-Q's restated comparative
          wins on form priority + filed_date.
       2. YTD-vs-standalone XBRL duplicates are resolved by keeping the
          standalone quarterly row.
+      3. ``fiscal_year``/``fiscal_period`` are recomputed from ``period_end``
+         + ``fy_end_month`` so comparative rows don't inherit the newer
+         filing's labels.
 
     The long-format dataframe from the canonical exporter is pivoted into the
     wide shape this bundle file has historically used: one row per period_end,
     with Revenue/GrossProfit/OperatingIncome/NetIncome columns and the
     Revenue row's accession_no + filing_url as provenance.
+
+    Args:
+        ticker:        Ticker symbol.
+        fy_end_month:  Fiscal-year-end month from ``config/company.yaml``;
+                       used to relabel comparative rows correctly.
 
     Returns:
         Wide DataFrame of the last 12 quarters, or None if no warehouse exists.
@@ -150,7 +158,7 @@ def _build_historical_financials(ticker: str) -> pd.DataFrame | None:
 
     con = duckdb.connect(str(db_path), read_only=True)
     try:
-        long_df = _export_fact_financials(con)
+        long_df = _export_fact_financials(con, fy_end_month=fy_end_month)
     finally:
         con.close()
 
@@ -687,7 +695,8 @@ def build(ticker: str | None = None) -> dict[str, Path]:
     logger.info("Written: %s", path_10q.name)
 
     # 04 — Historical financials
-    df_hist = _build_historical_financials(resolved_ticker)
+    fy_end_month = int(config.get("fiscal_year_end_month", 12))
+    df_hist = _build_historical_financials(resolved_ticker, fy_end_month=fy_end_month)
     path = _BUNDLE_DIR / "04_historical_financials.csv"
     if df_hist is not None:
         df_hist.to_csv(path, index=False)
