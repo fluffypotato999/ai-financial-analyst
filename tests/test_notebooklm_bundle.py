@@ -206,7 +206,7 @@ def test_historical_financials_uses_canonical_export(tmp_path: Path) -> None:
         build_warehouse(ticker="PANW")
 
     with patch.object(build_notebooklm_bundle, "_PROCESSED_DIR", tmp_path):
-        df = _build_historical_financials("PANW")
+        df = _build_historical_financials("PANW", fy_end_month=7)
 
     assert df is not None and len(df) > 0, "Bundle CSV should not be empty for PANW fixture"
 
@@ -227,6 +227,23 @@ def test_historical_financials_uses_canonical_export(tmp_path: Path) -> None:
         assert rev < 3.0e9, (
             f"Revenue for 2025-01-31 was {rev:.3e}; expected ~2.257B (Q2 standalone), "
             "not the ~4.396B YTD H1 cumulative."
+        )
+
+    # Invariant 4: distinct period_ends carry distinct (fiscal_year, fiscal_period)
+    # pairs — comparative rows must not inherit the newer filing's labels.
+    # ai-financial-analyst-bau regression catch.
+    pair_to_periods = df.groupby(["fiscal_year", "fiscal_period"])["period_end"].nunique()
+    assert (pair_to_periods <= 1).all(), (
+        "Bundle CSV has fiscal labels duplicated across distinct period_ends:\n"
+        f"{pair_to_periods[pair_to_periods > 1]}"
+    )
+
+    # Specific PANW check: 2025-01-31 must be FY2025 Q2 (July fiscal year),
+    # NOT FY2026 Q2 inherited from the FY2026 Q2 10-Q's comparative row.
+    if len(q2) > 0:
+        assert (int(q2.iloc[0]["fiscal_year"]), q2.iloc[0]["fiscal_period"]) == (2025, "Q2"), (
+            f"period_end=2025-01-31 should be (2025, Q2) for PANW July FY; got "
+            f"({q2.iloc[0]['fiscal_year']}, {q2.iloc[0]['fiscal_period']})"
         )
 
 

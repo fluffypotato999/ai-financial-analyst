@@ -5,7 +5,7 @@
 - **SEC CIK:** 0001327567
 - **Fiscal year end:** July
 - **Sector ETF benchmark:** XLK
-- **Has physical inventory (Strata appliances):** True
+- **Has physical inventory (Strata appliances):** unknown
 
 ## Data Sources
 - **Financial data:** SEC EDGAR XBRL structured facts (free, public)

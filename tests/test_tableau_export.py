@@ -17,6 +17,7 @@ import yaml
 
 from src.build_warehouse import build as build_warehouse
 from src.export_for_tableau import (
+    _calendar_to_fiscal_quarter,
     _export_dim_filing,
     _export_dim_metric,
     _export_fact_financials,
@@ -85,6 +86,81 @@ def test_fiscal_to_calendar_quarter_q4() -> None:
     cal_year, cal_q = _fiscal_to_calendar_quarter(2024, "Q4", fy_end_month=12)
     assert cal_q == 4
     assert cal_year == 2024
+
+
+# ── _calendar_to_fiscal_quarter ───────────────────────────────────────────────
+
+
+def test_calendar_to_fiscal_quarter_panw_q2() -> None:
+    """PANW July fiscal year: 2025-01-31 (Jan) is FY2025 Q2."""
+    fy, fp = _calendar_to_fiscal_quarter(pd.Timestamp("2025-01-31"), fy_end_month=7)
+    assert (fy, fp) == (2025, "Q2")
+
+
+def test_calendar_to_fiscal_quarter_panw_q4_end_of_fy() -> None:
+    """PANW July fiscal year: 2025-07-31 closes FY2025 Q4."""
+    fy, fp = _calendar_to_fiscal_quarter(pd.Timestamp("2025-07-31"), fy_end_month=7)
+    assert (fy, fp) == (2025, "Q4")
+
+
+def test_calendar_to_fiscal_quarter_panw_q1_after_fy_rollover() -> None:
+    """PANW July fiscal year: 2025-10-31 (Oct, after July rollover) is FY2026 Q1."""
+    fy, fp = _calendar_to_fiscal_quarter(pd.Timestamp("2025-10-31"), fy_end_month=7)
+    assert (fy, fp) == (2026, "Q1")
+
+
+def test_calendar_to_fiscal_quarter_calendar_fy() -> None:
+    """December fiscal year: 2024-09-30 is FY2024 Q3, 2024-12-31 is FY2024 Q4."""
+    assert _calendar_to_fiscal_quarter(pd.Timestamp("2024-09-30"), fy_end_month=12) == (
+        2024,
+        "Q3",
+    )
+    assert _calendar_to_fiscal_quarter(pd.Timestamp("2024-12-31"), fy_end_month=12) == (
+        2024,
+        "Q4",
+    )
+
+
+def test_calendar_to_fiscal_quarter_apple_september_fy() -> None:
+    """Apple September fiscal year: late-Sept close is FY Q4, June close is Q3."""
+    assert _calendar_to_fiscal_quarter(pd.Timestamp("2025-09-27"), fy_end_month=9) == (
+        2025,
+        "Q4",
+    )
+    assert _calendar_to_fiscal_quarter(pd.Timestamp("2025-06-28"), fy_end_month=9) == (
+        2025,
+        "Q3",
+    )
+
+
+def test_calendar_to_fiscal_quarter_round_trip_calendar_fy() -> None:
+    """Round-trip with the existing fiscal→calendar helper for calendar fy.
+
+    For ``fy_end_month=12`` the two helpers must agree: feeding the calendar
+    period_end produced by ``_fiscal_to_calendar_quarter`` back through
+    ``_calendar_to_fiscal_quarter`` reproduces the original (fy, Qn).
+
+    Note: ``_fiscal_to_calendar_quarter`` has a separate, pre-existing
+    year-naming inconsistency for fy-spanning fiscal years (e.g. PANW July fy)
+    where the helper returns the calendar year of the fiscal-year *start*
+    rather than the EDGAR convention of fiscal-year *end*. That mismatch is
+    out of scope for this bead — it affects only ``dim_date.csv`` and is
+    tracked separately. We round-trip only on calendar-fy here.
+    """
+    cal_quarter_end_month = {1: 3, 2: 6, 3: 9, 4: 12}
+    fy_end_month = 12
+    for fy_in in (2024, 2025):
+        for q_in in ("Q1", "Q2", "Q3", "Q4"):
+            cal_year, cal_q = _fiscal_to_calendar_quarter(fy_in, q_in, fy_end_month)
+            pe = pd.Timestamp(year=cal_year, month=cal_quarter_end_month[cal_q], day=1) + (
+                pd.offsets.MonthEnd(0)
+            )
+            fy_out, q_out = _calendar_to_fiscal_quarter(pe, fy_end_month)
+            assert (fy_out, q_out) == (fy_in, q_in), (
+                f"round-trip failed: fy_end_month={fy_end_month} "
+                f"fy={fy_in} q={q_in} → cal=({cal_year},{cal_q}) → pe={pe.date()} "
+                f"→ ({fy_out},{q_out})"
+            )
 
 
 # ── _export_dim_metric ────────────────────────────────────────────────────────
@@ -268,6 +344,43 @@ def test_fact_financials_unique_per_period_end(tmp_path: Path) -> None:
     ), f"Duplicate (ticker, line_item, period_end) rows in export:\n{dup_rows.to_string()}"
 
 
+def test_fact_financials_fiscal_labels_self_consistent_with_period_end(tmp_path: Path) -> None:
+    """Every exported row's (fiscal_year, fiscal_period) matches its period_end.
+
+    Comparative rows carried in newer 10-Qs inherit the new filing's labels
+    via ``v_canonical_facts``. The export must recompute fiscal labels from
+    ``period_end`` + ``fy_end_month`` so each calendar period_end carries its
+    *own* fiscal label, and no two distinct period_ends share a fiscal pair.
+    Regression catch for ai-financial-analyst-bau.
+    """
+    db_path = _build_warehouse_tmp("panw_companyfacts.json", "PANW", 1327567, tmp_path)
+    import duckdb
+
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        df = _export_fact_financials(con, fy_end_month=7)
+    finally:
+        con.close()
+
+    # Every row's labels must match what the helper computes from its period_end.
+    for _, row in df.iterrows():
+        expected_fy, expected_fp = _calendar_to_fiscal_quarter(row["period_end"], 7)
+        assert (int(row["fiscal_year"]), row["fiscal_period"]) == (expected_fy, expected_fp), (
+            f"fiscal label drift: period_end={row['period_end']} "
+            f"line_item={row['line_item']} got=({row['fiscal_year']}, {row['fiscal_period']}) "
+            f"expected=({expected_fy}, {expected_fp})"
+        )
+
+    # Within any single line_item, distinct period_ends must carry distinct
+    # fiscal pairs — the user-visible symptom the reviewer flagged.
+    for _line_item, grp in df.groupby("line_item"):
+        pair_to_periods = grp.groupby(["fiscal_year", "fiscal_period"])["period_end"].nunique()
+        assert (pair_to_periods <= 1).all(), (
+            "fiscal labels duplicated across distinct period_ends:\n"
+            f"{pair_to_periods[pair_to_periods > 1]}"
+        )
+
+
 def test_fact_financials_collapses_multi_fiscal_year_comparatives(tmp_path: Path) -> None:
     """fact_financials must collapse multi-fiscal-year comparatives to one row.
 
@@ -353,7 +466,8 @@ def test_fact_financials_collapses_multi_fiscal_year_comparatives(tmp_path: Path
         )
         con.execute(_SQL_CANONICAL)
 
-        df = _export_fact_financials(con)
+        # PANW-like July fiscal year end so 2024-10-31 maps to FY2025 Q1.
+        df = _export_fact_financials(con, fy_end_month=7)
     finally:
         con.close()
 
@@ -365,11 +479,16 @@ def test_fact_financials_collapses_multi_fiscal_year_comparatives(tmp_path: Path
         f"{df[dupes][['ticker', 'line_item', 'period_end', 'fiscal_year', 'value', 'filed_date']].to_string()}"
     )
 
-    # The newer filing (FY2026-Q1 10-Q, filed 2025-11-20) must win.
+    # The newer filing (FY2026-Q1 10-Q, filed 2025-11-20) wins the value pick.
     revenue = df[(df["line_item"] == "Revenue") & (df["period_end"].astype(str) == "2024-10-31")]
     assert len(revenue) == 1
-    assert int(revenue.iloc[0]["fiscal_year"]) == 2026
     assert revenue.iloc[0]["accession_no"] == "0000000000-25-000001"
+
+    # Fiscal labels are recomputed from period_end + fy_end_month, NOT inherited
+    # from the newer filing's stamped (2026, Q1).  For PANW's July fiscal year,
+    # 2024-10-31 lives in FY2025 Q1.  This is the regression catch for ai-financial-analyst-bau.
+    assert int(revenue.iloc[0]["fiscal_year"]) == 2025
+    assert revenue.iloc[0]["fiscal_period"] == "Q1"
 
 
 def test_fact_financials_ytd_tie_resolved_to_standalone(tmp_path: Path) -> None:

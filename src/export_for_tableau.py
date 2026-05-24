@@ -205,10 +205,44 @@ def _fiscal_to_calendar_quarter(
     return cal_year, cal_quarter
 
 
+def _calendar_to_fiscal_quarter(
+    period_end: pd.Timestamp,
+    fy_end_month: int,
+) -> tuple[int, str]:
+    """Map a calendar quarter-end date to (fiscal_year, fiscal_period).
+
+    Inverse of :func:`_fiscal_to_calendar_quarter`. Used to recompute fiscal
+    labels from ``period_end`` after the multi-fiscal-year comparative
+    collapse: a comparative row carried in a newer 10-Q inherits the *new*
+    filing's ``fiscal_year``/``fiscal_period`` from ``v_canonical_facts`` even
+    though its ``period_end`` belongs to the prior year. Recomputing from
+    ``period_end`` keeps the labels self-consistent.
+
+    Convention: ``fiscal_year`` is named for the calendar year in which it
+    ends (PANW's fiscal year ending July 2025 is FY2025; Q2 of FY2025 ends
+    Jan 2025).
+
+    Args:
+        period_end:    Calendar quarter-end date (e.g. ``2025-01-31``).
+        fy_end_month:  Month in which the fiscal year ends (1–12).
+
+    Returns:
+        ``(fiscal_year, fiscal_period)`` tuple, e.g. ``(2025, "Q2")``.
+    """
+    ts = pd.to_datetime(period_end)
+    months_before_fy_end = (fy_end_month - ts.month) % 12
+    quarter = 4 - months_before_fy_end // 3
+    fiscal_year = ts.year if ts.month <= fy_end_month else ts.year + 1
+    return fiscal_year, f"Q{quarter}"
+
+
 # ── Export functions ───────────────────────────────────────────────────────────
 
 
-def _export_fact_financials(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+def _export_fact_financials(
+    con: duckdb.DuckDBPyConnection,
+    fy_end_month: int = 12,
+) -> pd.DataFrame:
     """Long-format actuals with provenance columns.
 
     Deduplication notes
@@ -245,6 +279,15 @@ def _export_fact_financials(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
        fiscal_year, fiscal_period) using the same frame-then-magnitude
        priority is kept as a defense-in-depth guard for shapes the SQL
        collapse can't see.
+
+    3. **Comparative-row label inheritance.**  ``v_canonical_facts`` keeps
+       whichever fiscal_year/fiscal_period was stamped on the surviving row.
+       For comparative rows carried in a newer 10-Q, that's the *new*
+       filing's labels — so a prior-year ``period_end`` (e.g. 2025-01-31)
+       wrongly inherits the new filing's ``fiscal_year=2026, Q2``.  After
+       the dedup we recompute both labels from ``period_end`` +
+       ``fy_end_month`` via :func:`_calendar_to_fiscal_quarter`, so labels
+       are always self-consistent with the calendar period.
     """
     # Pull from v_canonical_facts and collapse multi-fiscal-year comparatives
     # to one canonical row per (ticker, line_item, period_end) using form
@@ -310,6 +353,14 @@ def _export_fact_financials(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
             logger.info(
                 "  Removed %d YTD duplicate rows (kept standalone quarterly values)", n_removed
             )
+
+    # Recompute fiscal_year/fiscal_period from period_end so comparative rows
+    # carry their *own* fiscal labels rather than the labels stamped by the
+    # newer filing that won the QUALIFY pick.  See dedup note (3).
+    if len(df) > 0:
+        fiscal_pairs = [_calendar_to_fiscal_quarter(pe, fy_end_month) for pe in df["period_end"]]
+        df["fiscal_year"] = [fy for fy, _fp in fiscal_pairs]
+        df["fiscal_period"] = [fp for _fy, fp in fiscal_pairs]
 
     return df.sort_values(["line_item", "fiscal_year", "fiscal_period"]).reset_index(drop=True)
 
@@ -565,7 +616,7 @@ def export(ticker: str | None = None) -> dict[str, Path]:
     logger.info("Exporting fact_financials...")
     con = duckdb.connect(str(db_path), read_only=True)
     try:
-        df_fin = _export_fact_financials(con)
+        df_fin = _export_fact_financials(con, fy_end_month=fy_end_month)
     finally:
         con.close()
     p = _TABLEAU_DIR / "fact_financials.csv"
