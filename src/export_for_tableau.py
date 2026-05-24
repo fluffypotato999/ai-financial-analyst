@@ -232,12 +232,19 @@ def _export_fact_financials(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
        3-month standalone value and a YTD cumulative value for the same
        concept and period_end (e.g. a Q2 10-Q includes both the Q2 standalone
        and the H1 YTD revenue figure).  Both rows pass the ``period_type='Q'``
-       filter and share the same fiscal triple.  We resolve those by keeping
-       the row with the minimum absolute value per (ticker, line_item,
-       period_end, fiscal_year, fiscal_period) — the standalone quarterly
-       value is always <= the YTD cumulative for income-statement and
-       cash-flow items, and balance-sheet items (point-in-time) are identical
-       across contexts.
+       filter and share the same fiscal triple but differ on ``frame`` — the
+       standalone row carries a quarter-frame (``CY####Q#``) while the YTD row
+       carries an empty frame.  The SQL QUALIFY breaks the
+       form-priority/filed-date tie by preferring quarter-framed rows
+       (``CASE WHEN frame LIKE 'CY%Q%' THEN 0 ELSE 1 END ASC``), which is
+       semantic and sign-invariant — magnitude-based tiebreakers fail on any
+       quarter where the standalone value crosses zero (e.g. a Q2 loss
+       deeper than the YTD H1 loss because Q1 was a profit).  ``ABS(value)
+       ASC`` remains as a last-resort tiebreaker for rows that share frame
+       category.  The trailing pandas pass on (ticker, line_item, period_end,
+       fiscal_year, fiscal_period) using the same frame-then-magnitude
+       priority is kept as a defense-in-depth guard for shapes the SQL
+       collapse can't see.
     """
     # Pull from v_canonical_facts and collapse multi-fiscal-year comparatives
     # to one canonical row per (ticker, line_item, period_end) using form
@@ -258,7 +265,8 @@ def _export_fact_financials(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
             fact_id,
             filing_url,
             form_type,
-            filed_date
+            filed_date,
+            frame
         FROM v_canonical_facts
         WHERE period_type = 'Q'
         QUALIFY ROW_NUMBER() OVER (
@@ -271,22 +279,31 @@ def _export_fact_financials(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
                     WHEN '10-Q'   THEN 1
                     ELSE 0
                 END DESC,
-                filed_date DESC
+                filed_date DESC,
+                CASE WHEN frame LIKE 'CY%Q%' THEN 0 ELSE 1 END ASC,
+                ABS(value) ASC
         ) = 1
         ORDER BY line_item, fiscal_year, fiscal_period
     """).fetchdf()
 
-    # Drop YTD duplicates: sort by abs(value) ascending, keep first per group.
-    # (After the form-priority collapse above the surviving rows still need this
-    # pass because YTD/standalone duplication happens within a single filing.)
+    # Drop YTD duplicates with frame-aware priority: prefer quarter-framed
+    # rows (CY####Q#) over empty/year-framed rows, then fall back to smaller
+    # absolute value.  Magnitude alone is unsafe — for a quarter where the
+    # standalone value crosses zero (e.g. Q2 loss deeper than YTD H1 loss
+    # because Q1 was a profit), the YTD row has the smaller absolute value
+    # and would wrongly win.  Frame is a semantic, sign-invariant signal.
     dedup_key = ["ticker", "line_item", "period_end", "fiscal_year", "fiscal_period"]
     if len(df) > 0:
         n_before = len(df)
+        frame_col = df["frame"] if "frame" in df.columns else pd.Series([""] * len(df))
+        df["_frame_priority"] = (
+            frame_col.fillna("").str.match(r"^CY\d+Q\d+$").map({True: 0, False: 1})
+        )
         df["_abs_value"] = df["value"].abs()
         df = (
-            df.sort_values("_abs_value")
+            df.sort_values(["_frame_priority", "_abs_value"])
             .drop_duplicates(subset=dedup_key, keep="first")
-            .drop(columns=["_abs_value"])
+            .drop(columns=["_frame_priority", "_abs_value"])
         )
         n_removed = n_before - len(df)
         if n_removed > 0:

@@ -21,6 +21,7 @@ from src import build_excel_model, build_notebooklm_bundle
 from src.build_notebooklm_bundle import (
     _build_excel_model_summary,
     _build_forecast_summary,
+    _build_historical_financials,
     _download_sec_filing,
 )
 
@@ -157,6 +158,76 @@ def test_sample_commentary_renamed_and_banner_added(tmp_path: Path) -> None:
     assert (
         "live commentary required" in readme.lower()
     ), "README should suppress the provenance demo prompt for sample commentary"
+
+
+def test_historical_financials_uses_canonical_export(tmp_path: Path) -> None:
+    """04_historical_financials.csv inherits the canonical export contract.
+
+    The bundle's CSV-builder must reuse ``_export_fact_financials`` so that
+    every (ticker, line_item, period_end) appears at most once and every row
+    carries a non-null accession_no.  Previously the bundle ran its own SQL
+    against ``v_canonical_facts`` and silently emitted YTD-vs-standalone
+    duplicates plus rows with missing provenance.
+    """
+    import json
+
+    import yaml
+
+    from src.build_warehouse import build as build_warehouse
+    from src.ingest_edgar import ingest
+
+    fixtures_dir = Path(__file__).parent / "fixtures"
+    with (fixtures_dir / "panw_companyfacts.json").open() as fh:
+        facts = json.load(fh)
+
+    config: dict[str, Any] = {
+        "cik": "0001327567",
+        "cik_int": 1327567,
+        "ticker": "PANW",
+        "name": "Test PANW",
+        "fiscal_year_end_month": 7,
+        "fiscal_year_end_day": 31,
+        "sector_etf": "XLK",
+    }
+    config_path = tmp_path / "company.yaml"
+    with config_path.open("w") as fh:
+        yaml.dump(config, fh)
+
+    with (
+        patch("src.ingest_edgar._CONFIG_PATH", config_path),
+        patch("src.ingest_edgar._DATA_DIR", tmp_path),
+    ):
+        ingest(ticker="PANW", years=10, facts_json=facts)
+
+    with (
+        patch("src.build_warehouse._CONFIG_PATH", config_path),
+        patch("src.build_warehouse._PROCESSED_DIR", tmp_path),
+    ):
+        build_warehouse(ticker="PANW")
+
+    with patch.object(build_notebooklm_bundle, "_PROCESSED_DIR", tmp_path):
+        df = _build_historical_financials("PANW")
+
+    assert df is not None and len(df) > 0, "Bundle CSV should not be empty for PANW fixture"
+
+    # Invariant 1: no duplicates per period_end (would have halved Tableau values).
+    dupes = df.duplicated(subset=["period_end"]).sum()
+    assert dupes == 0, f"Bundle CSV has {dupes} duplicate period_end rows"
+
+    # Invariant 2: every row carries provenance.
+    missing = df["accession_no"].isna().sum()
+    assert missing == 0, f"Bundle CSV has {missing} rows with null accession_no"
+
+    # Invariant 3: standalone (not YTD) values.  Q2 standalone Revenue for PANW
+    # 2025-01-31 is ~2.257B; the YTD H1 cumulative is ~4.396B.  If the YTD row
+    # ever wins the QUALIFY race in _export_fact_financials, this catches it.
+    q2 = df[df["period_end"] == "2025-01-31"]
+    if len(q2) > 0:
+        rev = float(q2.iloc[0]["Revenue"])
+        assert rev < 3.0e9, (
+            f"Revenue for 2025-01-31 was {rev:.3e}; expected ~2.257B (Q2 standalone), "
+            "not the ~4.396B YTD H1 cumulative."
+        )
 
 
 def test_forecast_summary_renders_table_without_tabulate(tmp_path: Path) -> None:

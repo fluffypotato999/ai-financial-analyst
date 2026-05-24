@@ -120,47 +120,88 @@ def _build_company_overview(ticker: str, config: dict[str, Any]) -> str:
 
 
 def _build_historical_financials(ticker: str) -> pd.DataFrame | None:
-    """Load last 12 quarters from DuckDB with provenance columns.
+    """Last 12 quarters with provenance, deduped by the canonical export logic.
 
-    Args:
-        ticker: Company ticker symbol.
+    Reuses ``src.export_for_tableau._export_fact_financials`` so the bundle
+    inherits the same two invariants the Tableau export enforces:
+
+      1. Multi-fiscal-year comparatives are collapsed to one row per
+         (ticker, line_item, period_end) — newer 10-Q's restated comparative
+         wins on form priority + filed_date.
+      2. YTD-vs-standalone XBRL duplicates are resolved by keeping the
+         standalone quarterly row.
+
+    The long-format dataframe from the canonical exporter is pivoted into the
+    wide shape this bundle file has historically used: one row per period_end,
+    with Revenue/GrossProfit/OperatingIncome/NetIncome columns and the
+    Revenue row's accession_no + filing_url as provenance.
 
     Returns:
-        DataFrame with 12 quarters × (line_items + accession_no + filing_url),
-        or None if the warehouse doesn't exist.
+        Wide DataFrame of the last 12 quarters, or None if no warehouse exists.
     """
     import duckdb  # noqa: PLC0415
+
+    from src.export_for_tableau import _export_fact_financials  # noqa: PLC0415
 
     db_path = _PROCESSED_DIR / f"{ticker}.duckdb"
     if not db_path.exists():
         logger.warning("DuckDB not found: %s — skipping historical financials", db_path)
         return None
 
-    sql = """
-        SELECT
-            period_end,
-            fiscal_year,
-            fiscal_period,
-            period_type,
-            Revenue,
-            GrossProfit,
-            OperatingIncome,
-            NetIncome,
-            revenue_fact_id,
-            revenue_accession    AS accession_no,
-            revenue_filing_url   AS filing_url
-        FROM v_income_statement_quarterly
-        WHERE period_type = 'Q'
-          AND Revenue IS NOT NULL
-        ORDER BY fiscal_year DESC, fiscal_period DESC
-        LIMIT 12
-    """
     con = duckdb.connect(str(db_path), read_only=True)
     try:
-        df = con.execute(sql).fetchdf()
+        long_df = _export_fact_financials(con)
     finally:
         con.close()
-    return df
+
+    if len(long_df) == 0:
+        return long_df
+
+    # Pivot to wide: one row per period_end, columns per line_item value.
+    # Keep only the income-statement line items the bundle's CSV has always
+    # exposed; downstream consumers can read other metrics from the Tableau
+    # CSVs if they need them.
+    wanted = ["Revenue", "GrossProfit", "OperatingIncome", "NetIncome"]
+    is_only = long_df[long_df["line_item"].isin(wanted)].copy()
+
+    pivot_keys = ["ticker", "period_end", "fiscal_year", "fiscal_period", "period_type"]
+    values = (
+        is_only.pivot_table(
+            index=pivot_keys,
+            columns="line_item",
+            values="value",
+            aggfunc="first",
+        )
+        .reset_index()
+        .rename_axis(None, axis=1)
+    )
+
+    # Carry the Revenue row's provenance triple as the canonical accession for
+    # the period — the bundle's previous schema used the Revenue accession too.
+    revenue_provenance = (
+        is_only[is_only["line_item"] == "Revenue"][
+            ["period_end", "fact_id", "accession_no", "filing_url"]
+        ]
+        .drop_duplicates(subset=["period_end"])
+        .rename(columns={"fact_id": "revenue_fact_id"})
+    )
+    wide = values.merge(revenue_provenance, on="period_end", how="left")
+
+    # Keep the most-recent 12 quarters (the bundle's prior LIMIT 12 contract).
+    wide = wide.sort_values(["fiscal_year", "fiscal_period"], ascending=False).head(12)
+
+    # Stable column order: identifiers, line items, provenance.
+    ordered_cols = [
+        "period_end",
+        "fiscal_year",
+        "fiscal_period",
+        "period_type",
+        *wanted,
+        "revenue_fact_id",
+        "accession_no",
+        "filing_url",
+    ]
+    return wide[[c for c in ordered_cols if c in wide.columns]].reset_index(drop=True)
 
 
 # ── File 05: Forecast summary ─────────────────────────────────────────────────

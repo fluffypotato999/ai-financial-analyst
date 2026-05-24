@@ -372,6 +372,199 @@ def test_fact_financials_collapses_multi_fiscal_year_comparatives(tmp_path: Path
     assert revenue.iloc[0]["accession_no"] == "0000000000-25-000001"
 
 
+def test_fact_financials_ytd_tie_resolved_to_standalone(tmp_path: Path) -> None:
+    """When form_type and filed_date tie, the smaller (standalone) value wins.
+
+    A single 10-Q reports both the 3-month standalone and the YTD cumulative
+    value for the same period_end, with the same form_type and filed_date but
+    different ``frame`` (e.g. ``CY2024Q4`` vs empty).  The QUALIFY's row pick
+    must break that tie deterministically with ``ABS(value) ASC`` so the
+    standalone value wins — otherwise DuckDB occasionally surfaces the YTD
+    cumulative and the export silently doubles the period's value.
+    """
+    import duckdb
+
+    from src.build_warehouse import _SQL_CANONICAL
+
+    db_path = tmp_path / "synthetic_ytd.duckdb"
+    con = duckdb.connect(str(db_path))
+    try:
+        con.execute("""
+            CREATE TABLE raw_financials (
+                ticker        VARCHAR,
+                line_item     VARCHAR,
+                concept_used  VARCHAR,
+                period_end    DATE,
+                period_type   VARCHAR,
+                fiscal_year   INTEGER,
+                fiscal_period VARCHAR,
+                value         DOUBLE,
+                unit          VARCHAR,
+                accession_no  VARCHAR,
+                fact_id       VARCHAR,
+                filing_url    VARCHAR,
+                form_type     VARCHAR,
+                filed_date    DATE,
+                frame         VARCHAR
+            )
+        """)
+        # Same fiscal triple, same form/filed_date, different frame: the
+        # YTD H1 cumulative (4.396B) and the Q2 standalone (2.257B).
+        # Modeled after PANW 2025-01-31 in the live warehouse.
+        rows = [
+            (
+                "TEST",
+                "Revenue",
+                "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "2025-01-31",
+                "Q",
+                2026,
+                "Q2",
+                4_396_000_000.0,  # YTD H1
+                "USD",
+                "0000000000-26-000001",
+                "fact-ytd",
+                "https://example/ytd",
+                "10-Q",
+                "2026-02-18",
+                "",
+            ),
+            (
+                "TEST",
+                "Revenue",
+                "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "2025-01-31",
+                "Q",
+                2026,
+                "Q2",
+                2_257_000_000.0,  # Q2 standalone
+                "USD",
+                "0000000000-26-000001",
+                "fact-standalone",
+                "https://example/standalone",
+                "10-Q",
+                "2026-02-18",
+                "CY2024Q4",
+            ),
+        ]
+        con.executemany(
+            "INSERT INTO raw_financials VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            rows,
+        )
+        con.execute(_SQL_CANONICAL)
+
+        # Run the export multiple times — without the ABS(value) tiebreaker,
+        # DuckDB's row pick on ties is undefined; one of these runs would
+        # surface the YTD value.  With the tiebreaker, every run is identical.
+        results = [_export_fact_financials(con) for _ in range(5)]
+    finally:
+        con.close()
+
+    for df in results:
+        revenue = df[df["line_item"] == "Revenue"]
+        assert len(revenue) == 1
+        assert revenue.iloc[0]["value"] == 2_257_000_000.0, (
+            "YTD value won the QUALIFY race; frame-priority tiebreaker must "
+            f"pick the quarter-framed (standalone) row.\n{revenue.to_string()}"
+        )
+        assert revenue.iloc[0]["fact_id"] == "fact-standalone"
+
+
+def test_fact_financials_ytd_tie_negative_standalone(tmp_path: Path) -> None:
+    """Standalone wins even when its absolute value is LARGER than YTD's.
+
+    A magnitude-only tiebreaker (``ABS(value) ASC``) silently picks the wrong
+    row when the company's quarterly result crosses zero.  Example: Q1
+    OperatingIncome = +$200M (profit), Q2 OperatingIncome = -$300M (loss),
+    YTD H1 = -$100M.  ``ABS(-300M) > ABS(-100M)`` so the YTD row would win
+    on magnitude — and the export would understate the Q2 loss by $200M.
+
+    Frame priority (quarter-framed beats year/empty-framed) is sign-invariant
+    and is what the QUALIFY uses now.  This test pins that contract.
+    """
+    import duckdb
+
+    from src.build_warehouse import _SQL_CANONICAL
+
+    db_path = tmp_path / "synthetic_negative.duckdb"
+    con = duckdb.connect(str(db_path))
+    try:
+        con.execute("""
+            CREATE TABLE raw_financials (
+                ticker        VARCHAR,
+                line_item     VARCHAR,
+                concept_used  VARCHAR,
+                period_end    DATE,
+                period_type   VARCHAR,
+                fiscal_year   INTEGER,
+                fiscal_period VARCHAR,
+                value         DOUBLE,
+                unit          VARCHAR,
+                accession_no  VARCHAR,
+                fact_id       VARCHAR,
+                filing_url    VARCHAR,
+                form_type     VARCHAR,
+                filed_date    DATE,
+                frame         VARCHAR
+            )
+        """)
+        # Q2 standalone deeper loss than YTD H1 (because Q1 was a profit).
+        # ABS(standalone) > ABS(ytd) — magnitude tiebreaker would pick YTD.
+        rows = [
+            (
+                "TEST",
+                "OperatingIncome",
+                "OperatingIncomeLoss",
+                "2025-01-31",
+                "Q",
+                2026,
+                "Q2",
+                -100_000_000.0,  # YTD H1 (Q1 +200M, Q2 -300M => H1 -100M)
+                "USD",
+                "0000000000-26-000001",
+                "fact-ytd-loss",
+                "https://example/ytd",
+                "10-Q",
+                "2026-02-18",
+                "",
+            ),
+            (
+                "TEST",
+                "OperatingIncome",
+                "OperatingIncomeLoss",
+                "2025-01-31",
+                "Q",
+                2026,
+                "Q2",
+                -300_000_000.0,  # Q2 standalone (the deeper loss — correct)
+                "USD",
+                "0000000000-26-000001",
+                "fact-standalone-loss",
+                "https://example/standalone",
+                "10-Q",
+                "2026-02-18",
+                "CY2024Q4",
+            ),
+        ]
+        con.executemany(
+            "INSERT INTO raw_financials VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            rows,
+        )
+        con.execute(_SQL_CANONICAL)
+
+        df = _export_fact_financials(con)
+    finally:
+        con.close()
+
+    op = df[df["line_item"] == "OperatingIncome"]
+    assert len(op) == 1
+    assert op.iloc[0]["value"] == -300_000_000.0, (
+        "YTD value won — magnitude-only tiebreaker is unsafe on sign-flipping "
+        f"line items.  Frame priority must pick the quarter-framed row.\n{op.to_string()}"
+    )
+    assert op.iloc[0]["fact_id"] == "fact-standalone-loss"
+
+
 # ── _export_fact_forecasts ────────────────────────────────────────────────────
 
 
