@@ -677,6 +677,7 @@ def generate(
     *,
     dry_run: bool = True,
     verify_only: Path | None = None,
+    dump_payload: Path | None = None,
     max_guard_retries: int = 1,
 ) -> Path | None:
     """Run the full 5-step commentary pipeline.
@@ -686,6 +687,10 @@ def generate(
         db_path:           Path to DuckDB file; auto-derived from ticker if omitted.
         dry_run:           If True, print the prompt without calling the API (default).
         verify_only:       If given, skip Steps 1-4 and re-run the guard on this file.
+        dump_payload:      If given, write the structured JSON payload to this path
+                           after Step 3 — useful for offline iteration with
+                           ``src.validate_commentary``. Honoured in both dry-run and
+                           live mode.
         max_guard_retries: How many times to re-call Claude with corrective feedback
                            after a guard violation. Default 1 (one retry, two total
                            attempts). Set to 0 to disable retries.
@@ -736,6 +741,11 @@ def generate(
     # Step 3: Pre-format
     logger.info("Step 3: Pre-formatting numbers into payload JSON")
     payload = _build_payload(resolved_ticker, variance_row, quality_row)
+
+    if dump_payload is not None:
+        dump_payload.parent.mkdir(parents=True, exist_ok=True)
+        dump_payload.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+        logger.info("Payload written to %s", dump_payload)
 
     user_message = (
         "Here is the pre-computed variance data for this quarter. "
@@ -827,16 +837,27 @@ if __name__ == "__main__":
         default=None,
         help="Re-run the guard on an existing commentary file (CI use)",
     )
+    parser.add_argument(
+        "--dump-payload",
+        metavar="PATH",
+        default=None,
+        help=(
+            "Also write the structured JSON payload to PATH. "
+            "Pair with `python -m src.validate_commentary` for offline guard checks."
+        ),
+    )
     args = parser.parse_args()
 
     is_dry_run = not args.live  # default is dry-run unless --live
     verify_path = Path(args.verify_only) if args.verify_only else None
+    dump_path = Path(args.dump_payload) if args.dump_payload else None
 
     try:
         result = generate(
             ticker=args.ticker,
             dry_run=is_dry_run,
             verify_only=verify_path,
+            dump_payload=dump_path,
         )
         if result:
             print(f"\nCommentary saved: {result}")
