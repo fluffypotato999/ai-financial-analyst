@@ -522,6 +522,7 @@ def _download_sec_filing(cik_int: int, form_type: str, dest: Path) -> bool:
     # Only download if likely a PDF
     if not primary_doc.lower().endswith(".pdf"):
         # Create a placeholder .txt file pointing to the filing
+        sibling_pdf = dest
         dest = dest.with_suffix(".txt")
         dest.write_text(
             f"Filing {form_type} not in PDF format.\n"
@@ -531,6 +532,11 @@ def _download_sec_filing(cik_int: int, form_type: str, dest: Path) -> bool:
             encoding="utf-8",
         )
         logger.info("Non-PDF %s — placeholder written to %s", form_type, dest)
+        # Remove any stale .pdf left from a prior run; NotebookLM would otherwise
+        # ingest both the placeholder and the real (now-superseded) PDF.
+        if sibling_pdf.exists() and sibling_pdf.suffix == ".pdf":
+            sibling_pdf.unlink()
+            logger.info("Removed stale PDF: %s", sibling_pdf.name)
         return True
 
     try:
