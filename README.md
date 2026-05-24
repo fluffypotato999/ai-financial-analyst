@@ -187,7 +187,7 @@ preliminary-to-final value drift is handled silently.
 
 ## Dashboard
 
-**Tableau Public dashboard:** https://public.tableau.com/app/profile/sid.den/viz/PANW-Financial-Dashboard/Dashboard1
+**Tableau Public dashboard:** https://public.tableau.com/app/profile/sid.den/viz/PANWDashboard/Dashboard1
 
 To regenerate: run `make dashboard TICKER=PANW` to refresh the CSVs in
 `dashboard/tableau_data/`, then republish following `dashboard/Tableau_Setup.md`.
