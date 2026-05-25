@@ -196,7 +196,8 @@ Sheets in the currently published v1 workbook:
 
 - **Revenue Actuals** — historical quarterly revenue with click-through to
   source SEC filings
-- **PANW Margins %** — gross / operating / net margin trajectory
+- **PANW Margins %** — gross and operating margin trajectory (GAAP Net Margin
+  excluded — see `dashboard/Tableau_Setup.md` §Sheet 2)
 - **Revenue Growth** — YoY revenue growth %
 
 The Revenue Actuals sheet has a "Source" tooltip showing `accession_no` with
