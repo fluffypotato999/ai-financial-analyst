@@ -73,19 +73,24 @@ is built from `fact_financials` joined to the dimension tables.
   XBRL fact with a single accession.
 
 ### Sheet 2: {ticker} Margins %
-- Rows: gross margin %, operating margin %, net margin % (three measures
-  on the same axis, or three rows)
+- Rows: gross margin %, operating margin % (two measures on the same axis)
 - Columns: `period_end` (continuous, quarterly)
 - Marks: Line, one colour per margin type
 - Calculated fields (see §5):
   ```
   Gross Margin %     = SUM([GrossProfit])  / SUM([Revenue])
   Operating Margin % = SUM([OperatingIncome]) / SUM([Revenue])
-  Net Margin %       = SUM([NetIncome])    / SUM([Revenue])
   ```
 - Format axis as percentage; reference lines optional.
 - Provenance: each margin computes from two source rows (numerator and
   denominator) — show both accession_no values in the mark's tooltip.
+
+> **GAAP Net Margin excluded.** FY2024 Q2 (period_end 2024-01-31) contains
+> a non-recurring $1.5B net tax benefit from a deferred tax asset
+> valuation allowance release (per 10-Q `0001327567-24-000005`, filed
+> 2024-02-21), which produces a ~88% net margin print that distorts trend
+> comparisons. The Net Margin % calculation is preserved in the data
+> source for reuse but is not surfaced on this sheet.
 
 ### Sheet 3: Revenue Growth
 - Rows: YoY revenue growth %
