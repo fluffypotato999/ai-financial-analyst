@@ -107,11 +107,10 @@ is built from `fact_financials` joined to the dimension tables.
 - Provenance: each growth value comes from two Revenue rows (current quarter
   + same quarter prior year) — both accession_no values are tooltip-able.
 
-### Sheet 4: KPI Strip (Big Ass Numbers)
+### Sheet 4: KPI Strip
 
-A row of seven BAN tiles across the top of the dashboard, each showing a
-trailing-twelve-month (TTM) headline figure with a sparkline + QoQ/YoY delta
-arrow underneath. Drives the "scannable in 5 seconds" reviewer experience.
+Seven tiles across the top of the dashboard. Each shows a trailing-twelve-month
+(TTM) figure with a sparkline + QoQ/YoY delta arrow underneath.
 
 Tiles (left → right): **TTM Revenue · TTM Operating Income · TTM FCF ·
 FCF Margin · Cash · YoY Revenue Growth · Rule of 40**.
@@ -143,7 +142,7 @@ YoY Revenue Growth = (SUM(IF [line_item]='Revenue' THEN [value] END)
                      - LOOKUP(SUM(IF [line_item]='Revenue' THEN [value] END), -4))
                    / ABS(LOOKUP(SUM(IF [line_item]='Revenue' THEN [value] END), -4))
 
-// Rule of 40 — durable SaaS quality bar; >40 is the senior-analyst signal
+// Rule of 40 — durable SaaS quality bar
 Rule of 40         = [YoY Revenue Growth] + [TTM FCF Margin %]
 ```
 
@@ -159,9 +158,8 @@ accession as the click-through).
 
 ### Sheet 5: FCF Cash Flow Bridge
 
-Quarterly waterfall showing how OCF translates to FCF after CapEx — the
-single most important slide for assessing capital efficiency at a security
-software vendor.
+Quarterly bridge: OCF → CapEx → FCF. Shows how operating cash converts to
+free cash quarter by quarter.
 
 - Rows: `[value]` (with CapEx sign-flipped to negative; FCF as a calculated bar)
 - Columns: `period_end` (continuous, quarterly)
@@ -214,13 +212,13 @@ The tooltip should list both — same template as Sheet 2.
 
 ### Sheet 7: Revenue & Forecast Overlay
 
-Actuals + 3-model forecast fan from `fact_forecasts.csv`. Lets the reviewer
-see the *range* of plausible outcomes, not a false-precision point estimate.
+Actuals + 3-model forecast fan from `fact_forecasts.csv`. The point is to
+show the *range* of plausible outcomes, not a point estimate.
 
-**Critical scope:** cap the forecast horizon at the next **4 quarters**.
-With ~20 historical observations per company, the 95% PI on quarter 5+ is
-wide enough to be meaningless (e.g. `$3.4B–$9.1B` for FY2027). Filter
-`fact_forecasts.period_end` to the first 4 forecast points.
+**Cap the forecast horizon at 4 quarters out.** With ~20 historical
+observations, the 95% PI on quarter 5+ is wide enough to be meaningless
+(e.g. `$3.4B–$9.1B` for FY2027). Filter `fact_forecasts.period_end` to the
+first 4 forecast points.
 
 - Columns: `period_end` (continuous, quarterly)
 - Rows: `[value]` from `fact_financials` (Revenue), and `yhat` / band fields
@@ -242,9 +240,8 @@ wide enough to be meaningless (e.g. `$3.4B–$9.1B` for FY2027). Filter
 
 ### Sheet 8: DSO (Days Sales Outstanding)
 
-Working-capital efficiency: `DSO = AccountsReceivable / Revenue × 91`.
-Rising DSO = customers paying slower (collections risk); falling DSO =
-collections improving. Standard B2B SaaS diligence chart.
+`DSO = AccountsReceivable / Revenue × 91`. Rising = customers paying slower
+(collections risk); falling = collections improving.
 
 - Columns: `period_end` (continuous, quarterly)
 - Rows: `[DSO]` (calc field below)
@@ -264,8 +261,8 @@ Provenance: two-source (AR + Revenue accessions, same quarter).
 
 ### Sheet 9: Deferred Revenue / Billings Proxy
 
-Forward-revenue visibility — until real RPO ingests (bead `zh9`), the QoQ
-change in deferred revenue is the standard analyst proxy for billings.
+Forward-revenue visibility. Until RPO ingests (bead `zh9`), the QoQ change
+in deferred revenue is the standard analyst proxy for billings.
 
 - Columns: `period_end` (continuous, quarterly)
 - Rows (dual axis):
@@ -286,9 +283,9 @@ when available."
 
 ### Sheet 10: Rule of 40 Quadrant
 
-The standard SaaS quality scatter. X = YoY revenue growth %, Y = TTM FCF
-margin %. The 40% diagonal is the durable-SaaS threshold; above-and-right
-of it = healthy; below-and-left = at-risk.
+Scatter: X = YoY revenue growth %, Y = TTM FCF margin %. The 40% diagonal
+is the durable-SaaS threshold — above-and-right = healthy, below-and-left
+= at-risk.
 
 - Columns: `[YoY Revenue Growth]` (continuous, %)
 - Rows: `[TTM FCF Margin %]` (continuous, %)
@@ -308,9 +305,8 @@ on the latest quarter's accession.
 
 ### Sheet 11: Forecast vs Actuals Scorecard
 
-Honest model accountability. For the most-recent realised quarter, show:
-prior forecast point estimate (per model) vs the actual that landed.
-Surfaces "did this model beat or miss?" without spin.
+Model accountability. For the most-recent realised quarter, show the prior
+forecast (per model) vs the actual that landed.
 
 - One small table, four rows (Actual, Prophet, AutoARIMA, Lasso), three columns:
   Quarter, Forecast / Actual, Δ vs Actual %
@@ -320,8 +316,7 @@ Surfaces "did this model beat or miss?" without spin.
 - Caption: "Forecasts generated YYYY-MM-DD, before this quarter's filing.
   No data leakage."
 
-This sheet is small but is the **senior signal** — it forces the model to
-be wrong in public, in a falsifiable way.
+It's small, but it's the falsifiable one — the model has to be wrong in public.
 
 ### Future work (v2 — not yet published)
 
@@ -401,8 +396,7 @@ For multi-source marks (FCF, margins, growth), the URL action fires on the
 growth). The tooltip still lists all contributing accessions in plain text so
 no source is hidden.
 
-This is what makes the model interview-defensible: every data point is one click
-away from its source SEC filing.
+Every data point is one click away from its source SEC filing.
 
 ---
 
