@@ -54,6 +54,7 @@ _CUMULATIVE_CASH_FLOW_ITEMS: frozenset[str] = frozenset(
         "TreasuryStockRepurchases",
     }
 )
+_QUARTER_FRAME_RE = r"^CY\d{4}Q[1-4]$"
 
 # ── Metric metadata ────────────────────────────────────────────────────────────
 # Controls dim_metric.csv — human labels and category groupings for Tableau.
@@ -295,7 +296,7 @@ def _cash_flow_ytd_to_standalone(df: pd.DataFrame) -> pd.DataFrame:
     )
     quarter_num = out["fiscal_period"].astype(str).str.extract(r"Q([1-4])", expand=False)
     out["_quarter_num"] = pd.to_numeric(quarter_num, errors="coerce")
-    out["_is_quarter_framed"] = frame_col.fillna("").str.match(r"^CY\d+Q\d+$")
+    out["_is_quarter_framed"] = frame_col.fillna("").str.match(_QUARTER_FRAME_RE)
     out["_raw_value"] = out["value"]
 
     mask = (
@@ -307,6 +308,15 @@ def _cash_flow_ytd_to_standalone(df: pd.DataFrame) -> pd.DataFrame:
     for (_ticker, _line_item, _fiscal_year), group in out[mask].groupby(
         ["ticker", "line_item", "fiscal_year"], sort=False
     ):
+        quarter_counts = group["_quarter_num"].value_counts()
+        duplicate_quarters = sorted(int(q) for q, count in quarter_counts.items() if count > 1)
+        if duplicate_quarters:
+            logger.warning(
+                "  %s FY%s: duplicate cash-flow fiscal quarters in Tableau export: %s",
+                _line_item,
+                _fiscal_year,
+                ", ".join(f"Q{q}" for q in duplicate_quarters),
+            )
         raw_by_q = {
             int(row["_quarter_num"]): row["_raw_value"]
             for _, row in group.sort_values("_quarter_num").iterrows()
@@ -318,6 +328,14 @@ def _cash_flow_ytd_to_standalone(df: pd.DataFrame) -> pd.DataFrame:
             prev_raw = raw_by_q.get(q_num - 1)
             if pd.notna(prev_raw):
                 out.at[idx, "value"] = row["_raw_value"] - prev_raw
+            else:
+                logger.warning(
+                    "  %s FY%s Q%d: cannot convert cumulative cash-flow row to standalone; "
+                    "missing prior quarter baseline",
+                    row["line_item"],
+                    row["fiscal_year"],
+                    q_num,
+                )
 
     return out.drop(columns=["_quarter_num", "_is_quarter_framed", "_raw_value"])
 
@@ -624,11 +642,11 @@ def _try_write_hyper(tableau_dir: Path, ticker: str) -> None:
                 df = pd.read_csv(fin_csv)
                 with Inserter(con, schema) as ins:
                     for _, row in df.iterrows():
-                        period_end = (
-                            pd.to_datetime(row.get("period_end")).date()
-                            if pd.notna(row.get("period_end"))
-                            else None
+                        period_end_ts = pd.to_datetime(
+                            row.get("period_end"),
+                            errors="coerce",
                         )
+                        period_end = None if pd.isna(period_end_ts) else period_end_ts.date()
                         ins.add_row(
                             [
                                 str(row.get("ticker", "")),

@@ -13,6 +13,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
+import pytest
 import yaml
 
 from src.build_warehouse import build as build_warehouse
@@ -947,6 +948,70 @@ def test_fact_financials_keeps_quarter_framed_cash_flow_rows(tmp_path: Path) -> 
     ]
     assert len(q2) == 1
     assert q2.iloc[0]["value"] == 160.0
+
+
+def test_fact_financials_warns_when_cash_flow_baseline_missing(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A cumulative Q3 cash-flow row without Q2 should not be silently published."""
+    import duckdb
+
+    from src.build_warehouse import _SQL_CANONICAL
+
+    db_path = tmp_path / "synthetic_cash_flow_missing_baseline.duckdb"
+    con = duckdb.connect(str(db_path))
+    try:
+        con.execute("""
+            CREATE TABLE raw_financials (
+                ticker        VARCHAR,
+                line_item     VARCHAR,
+                concept_used  VARCHAR,
+                period_end    DATE,
+                period_type   VARCHAR,
+                fiscal_year   INTEGER,
+                fiscal_period VARCHAR,
+                value         DOUBLE,
+                unit          VARCHAR,
+                accession_no  VARCHAR,
+                fact_id       VARCHAR,
+                filing_url    VARCHAR,
+                form_type     VARCHAR,
+                filed_date    DATE,
+                frame         VARCHAR
+            )
+        """)
+        rows = [
+            (
+                "TEST",
+                "OperatingCashFlow",
+                "NetCashProvidedByUsedInOperatingActivities",
+                "2025-04-30",
+                "Q",
+                2025,
+                "Q3",
+                450.0,
+                "USD",
+                "0000000000-25-000003",
+                "ocf-9m-ytd",
+                "https://example/q3",
+                "10-Q",
+                "2025-05-20",
+                "",
+            )
+        ]
+        con.executemany(
+            "INSERT INTO raw_financials VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            rows,
+        )
+        con.execute(_SQL_CANONICAL)
+
+        df = _export_fact_financials(con, fy_end_month=7)
+    finally:
+        con.close()
+
+    q3 = df[(df["line_item"] == "OperatingCashFlow") & (df["fiscal_period"] == "Q3")]
+    assert q3.iloc[0]["value"] == 450.0
+    assert "missing prior quarter baseline" in caplog.text
 
 
 # ── _export_fact_forecasts ────────────────────────────────────────────────────
