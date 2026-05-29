@@ -7,7 +7,7 @@
 
 ## TL;DR for reviewers
 
-- **Live dashboard:** [PANW on Tableau Public](https://public.tableau.com/app/profile/sid.den/viz/PANWDashboardUpdated/Dashboard1) — every revenue mark links to its source 10-Q on sec.gov
+- **Live dashboard:** [PANW on Tableau Public](https://public.tableau.com/app/profile/sid.den/viz/PANWDashboard/Dashboard1) — every revenue mark links to its source 10-Q on sec.gov
 - **Architectural invariant:** all arithmetic happens in deterministic Python/SQL before the LLM is called; the LLM writes narrative only, and every cited number must trace back to an SEC accession number (parse-then-compare hallucination guard enforces this in CI)
 - **Provenance:** seven columns — `concept_used`, `accession_no`, `fact_id`, `filing_url`, `form_type`, `filed_date`, `frame` — flow from XBRL ingest through the Excel Sources sheet and Tableau tooltips
 - **Entry points:** `make demo TICKER=PANW` runs the full pipeline; `src/generate_commentary.py` is the LLM call; `tests/eval/` is the ground-truth harness
@@ -132,8 +132,8 @@ preliminary-to-final value drift is handled silently.
 
 ## Dashboard
 
-**Tableau Public dashboard:** https://public.tableau.com/app/profile/sid.den/viz/PANWDashboardUpdated/Dashboard1
-Live: https://public.tableau.com/app/profile/sid.den/viz/PANWDashboardUpdated/Dashboard1
+**Tableau Public dashboard:** https://public.tableau.com/app/profile/sid.den/viz/PANWDashboard/Dashboard1
+Live: https://public.tableau.com/app/profile/sid.den/viz/PANWDashboard/Dashboard1
 
 Regenerate with `make dashboard TICKER=PANW`, then republish per `dashboard/Tableau_Setup.md`.
 
