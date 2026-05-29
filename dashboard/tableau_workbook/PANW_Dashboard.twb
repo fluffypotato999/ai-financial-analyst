@@ -1495,6 +1495,364 @@
       </table>
       <simple-id uuid='{0A5AC026-E710-49F7-AEA2-FA2C04D3F8C2}' />
     </worksheet>
+    <worksheet name='Income &amp; FCF'>
+      <layout-options>
+        <title><formatted-text><run>PANW Income &amp; FCF ($B)</run></formatted-text></title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='fact_financials+' name='federated.0z5x4qg09ht8lm11mizk51qku86y' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0z5x4qg09ht8lm11mizk51qku86y'>
+            <column caption='Value ($B)' datatype='real' name='[Calculation_4390148995850240]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='[value] / 1000000000' />
+            </column>
+            <column caption='Line Item' datatype='string' name='[line_item]' role='dimension' type='nominal' />
+            <column-instance column='[line_item]' derivation='None' name='[none:line_item:nk]' pivot='key' type='nominal' />
+            <column caption='Period End' datatype='date' name='[period_end]' role='dimension' type='ordinal' />
+            <column-instance column='[period_end]' derivation='Quarter-Trunc' name='[tqr:period_end:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_4390148995850240]' derivation='Sum' name='[sum:Calculation_4390148995850240:qk]' pivot='key' type='quantitative' />
+            <column caption='Value' datatype='real' name='[value]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='categorical' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]'>
+            <groupfilter function='union' user:op='manual'>
+              <groupfilter function='member' level='[none:line_item:nk]' member='&quot;Revenue&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+              <groupfilter function='member' level='[none:line_item:nk]' member='&quot;GrossProfit&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+              <groupfilter function='member' level='[none:line_item:nk]' member='&quot;OperatingIncome&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+              <groupfilter function='member' level='[none:line_item:nk]' member='&quot;FreeCashFlow&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+            </groupfilter>
+          </filter>
+          <slices>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[sum:Calculation_4390148995850240:qk]' scope='rows' value='($B)' />
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]' scope='cols' value='Fiscal Quarter End' />
+          </style-rule>
+          <style-rule element='label'>
+            <format attr='text-format' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[sum:Calculation_4390148995850240:qk]' value='n&quot;$&quot;#,##0.0&quot;B&quot;;-&quot;$&quot;#,##0.0&quot;B&quot;' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view><breakdown value='auto' /></view>
+            <mark class='Bar' />
+            <encodings>
+              <color column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]' />
+            </encodings>
+          </pane>
+        </panes>
+        <rows>[federated.0z5x4qg09ht8lm11mizk51qku86y].[sum:Calculation_4390148995850240:qk]</rows>
+        <cols>[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]</cols>
+      </table>
+      <simple-id uuid='{A1B2C3D4-1234-5678-ABCD-000000000001}' />
+    </worksheet>
+    <worksheet name='FCF Bridge'>
+      <layout-options>
+        <title><formatted-text><run>PANW FCF Bridge ($B)</run></formatted-text></title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='fact_financials+' name='federated.0z5x4qg09ht8lm11mizk51qku86y' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0z5x4qg09ht8lm11mizk51qku86y'>
+            <column caption='Value ($B)' datatype='real' name='[Calculation_4390148995850240]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='[value] / 1000000000' />
+            </column>
+            <column caption='Line Item' datatype='string' name='[line_item]' role='dimension' type='nominal' />
+            <column-instance column='[line_item]' derivation='None' name='[none:line_item:nk]' pivot='key' type='nominal' />
+            <column caption='Period End' datatype='date' name='[period_end]' role='dimension' type='ordinal' />
+            <column-instance column='[period_end]' derivation='Quarter-Trunc' name='[tqr:period_end:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_4390148995850240]' derivation='Sum' name='[sum:Calculation_4390148995850240:qk]' pivot='key' type='quantitative' />
+            <column caption='Value' datatype='real' name='[value]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='categorical' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]'>
+            <groupfilter function='union' user:op='manual'>
+              <groupfilter function='member' level='[none:line_item:nk]' member='&quot;OperatingCashFlow&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+              <groupfilter function='member' level='[none:line_item:nk]' member='&quot;CapEx&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+              <groupfilter function='member' level='[none:line_item:nk]' member='&quot;FreeCashFlow&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+            </groupfilter>
+          </filter>
+          <slices>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[sum:Calculation_4390148995850240:qk]' scope='rows' value='($B)' />
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]' scope='cols' value='Fiscal Quarter End' />
+          </style-rule>
+          <style-rule element='label'>
+            <format attr='text-format' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[sum:Calculation_4390148995850240:qk]' value='n&quot;$&quot;#,##0.0&quot;B&quot;;-&quot;$&quot;#,##0.0&quot;B&quot;' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view><breakdown value='auto' /></view>
+            <mark class='Bar' />
+            <encodings>
+              <color column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]' />
+            </encodings>
+          </pane>
+        </panes>
+        <rows>[federated.0z5x4qg09ht8lm11mizk51qku86y].[sum:Calculation_4390148995850240:qk]</rows>
+        <cols>[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]</cols>
+      </table>
+      <simple-id uuid='{A1B2C3D4-1234-5678-ABCD-000000000002}' />
+    </worksheet>
+    <worksheet name='All Margins %'>
+      <layout-options>
+        <title><formatted-text><run>PANW Margins % — Gross / Operating / Net / FCF</run></formatted-text></title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='fact_financials+' name='federated.0z5x4qg09ht8lm11mizk51qku86y' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0z5x4qg09ht8lm11mizk51qku86y'>
+            <column caption='Value ($B)' datatype='real' name='[Calculation_4390148995850240]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='[value] / 1000000000' />
+            </column>
+            <column caption='Gross Margin %' datatype='real' name='[Calculation_4390148998500353]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='SUM(IF [line_item] = &apos;GrossProfit&apos; THEN [Calculation_4390148995850240] END)&#10;  / SUM(IF [line_item] = &apos;Revenue&apos; THEN [Calculation_4390148995850240] END)' />
+            </column>
+            <column caption='Operating Margin %' datatype='real' name='[Calculation_4390148998676482]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='SUM(IF [line_item] = &apos;OperatingIncome&apos; THEN [Calculation_4390148995850240] END)&#10;  / SUM(IF [line_item] = &apos;Revenue&apos; THEN [Calculation_4390148995850240] END)' />
+            </column>
+            <column caption='Net Margin %' datatype='real' name='[Calculation_4390148998766595]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='SUM(IF [line_item] = &apos;NetIncome&apos; THEN [Calculation_4390148995850240] END)&#10;  / SUM(IF [line_item] = &apos;Revenue&apos; THEN [Calculation_4390148995850240] END)' />
+            </column>
+            <column caption='FCF Margin %' datatype='real' name='[Calculation_5100000000000001]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='SUM(IF [line_item] = &apos;FreeCashFlow&apos; THEN [Calculation_4390148995850240] END)&#10;  / SUM(IF [line_item] = &apos;Revenue&apos; THEN [Calculation_4390148995850240] END)' />
+            </column>
+            <column caption='Line Item' datatype='string' name='[line_item]' role='dimension' type='nominal' />
+            <column caption='Period End' datatype='date' name='[period_end]' role='dimension' type='ordinal' />
+            <column-instance column='[period_end]' derivation='Quarter-Trunc' name='[tqr:period_end:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_4390148998500353]' derivation='User' name='[usr:Calculation_4390148998500353:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_4390148998676482]' derivation='User' name='[usr:Calculation_4390148998676482:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_4390148998766595]' derivation='User' name='[usr:Calculation_4390148998766595:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_5100000000000001]' derivation='User' name='[usr:Calculation_5100000000000001:qk]' pivot='key' type='quantitative' />
+            <column caption='Value' datatype='real' name='[value]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='categorical' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[:Measure Names]'>
+            <groupfilter function='union' user:op='manual'>
+              <groupfilter function='member' level='[:Measure Names]' member='&quot;[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_4390148998500353:qk]&quot;' />
+              <groupfilter function='member' level='[:Measure Names]' member='&quot;[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_4390148998676482:qk]&quot;' />
+              <groupfilter function='member' level='[:Measure Names]' member='&quot;[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_4390148998766595:qk]&quot;' />
+              <groupfilter function='member' level='[:Measure Names]' member='&quot;[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000001:qk]&quot;' />
+            </groupfilter>
+          </filter>
+          <filter class='quantitative' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_4390148998500353:qk]' included-values='non-null' />
+          <filter class='quantitative' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_4390148998676482:qk]' included-values='non-null' />
+          <filter class='quantitative' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_4390148998766595:qk]' included-values='non-null' />
+          <filter class='quantitative' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000001:qk]' included-values='non-null' />
+          <slices>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[:Measure Names]</column>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_4390148998500353:qk]</column>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_4390148998676482:qk]</column>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_4390148998766595:qk]</column>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000001:qk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[Multiple Values]' scope='rows' value='Margin %' />
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]' scope='cols' value='Fiscal Quarter End' />
+          </style-rule>
+          <style-rule element='label'>
+            <format attr='text-format' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[Multiple Values]' value='p0%' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane id='1' selection-relaxation-option='selection-relaxation-allow'>
+            <view><breakdown value='auto' /></view>
+            <mark class='Line' />
+            <encodings>
+              <color column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[:Measure Names]' />
+            </encodings>
+          </pane>
+        </panes>
+        <rows>[federated.0z5x4qg09ht8lm11mizk51qku86y].[Multiple Values]</rows>
+        <cols>[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]</cols>
+      </table>
+      <simple-id uuid='{A1B2C3D4-1234-5678-ABCD-000000000003}' />
+    </worksheet>
+    <worksheet name='DSO Trend'>
+      <layout-options>
+        <title><formatted-text><run>PANW Days Sales Outstanding</run></formatted-text></title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='fact_financials+' name='federated.0z5x4qg09ht8lm11mizk51qku86y' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0z5x4qg09ht8lm11mizk51qku86y'>
+            <column caption='DSO (days)' datatype='real' name='[Calculation_5100000000000002]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='SUM(IF [line_item] = &apos;AccountsReceivable&apos; THEN [value] END)&#10;/ SUM(IF [line_item] = &apos;Revenue&apos; THEN [value] END) * 91' />
+            </column>
+            <column caption='Period End' datatype='date' name='[period_end]' role='dimension' type='ordinal' />
+            <column-instance column='[period_end]' derivation='Quarter-Trunc' name='[tqr:period_end:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_5100000000000002]' derivation='User' name='[usr:Calculation_5100000000000002:qk]' pivot='key' type='quantitative' />
+            <column caption='Value' datatype='real' name='[value]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='quantitative' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000002:qk]' included-values='non-null' />
+          <slices>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000002:qk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000002:qk]' scope='rows' value='DSO (days)' />
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]' scope='cols' value='Fiscal Quarter End' />
+          </style-rule>
+          <style-rule element='label'>
+            <format attr='text-format' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000002:qk]' value='#,##0' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view><breakdown value='auto' /></view>
+            <mark class='Line' />
+          </pane>
+        </panes>
+        <rows>[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000002:qk]</rows>
+        <cols>[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]</cols>
+      </table>
+      <simple-id uuid='{A1B2C3D4-1234-5678-ABCD-000000000004}' />
+    </worksheet>
+    <worksheet name='Billings Proxy'>
+      <layout-options>
+        <title><formatted-text><run>PANW Revenue &amp; Deferred Revenue ($B)</run></formatted-text></title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='fact_financials+' name='federated.0z5x4qg09ht8lm11mizk51qku86y' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0z5x4qg09ht8lm11mizk51qku86y'>
+            <column caption='Value ($B)' datatype='real' name='[Calculation_4390148995850240]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='[value] / 1000000000' />
+            </column>
+            <column caption='Line Item' datatype='string' name='[line_item]' role='dimension' type='nominal' />
+            <column-instance column='[line_item]' derivation='None' name='[none:line_item:nk]' pivot='key' type='nominal' />
+            <column caption='Period End' datatype='date' name='[period_end]' role='dimension' type='ordinal' />
+            <column-instance column='[period_end]' derivation='Quarter-Trunc' name='[tqr:period_end:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_4390148995850240]' derivation='Sum' name='[sum:Calculation_4390148995850240:qk]' pivot='key' type='quantitative' />
+            <column caption='Value' datatype='real' name='[value]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='categorical' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]'>
+            <groupfilter function='union' user:op='manual'>
+              <groupfilter function='member' level='[none:line_item:nk]' member='&quot;Revenue&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+              <groupfilter function='member' level='[none:line_item:nk]' member='&quot;DeferredRevenue&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+            </groupfilter>
+          </filter>
+          <slices>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[sum:Calculation_4390148995850240:qk]' scope='rows' value='($B)' />
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]' scope='cols' value='Fiscal Quarter End' />
+          </style-rule>
+          <style-rule element='label'>
+            <format attr='text-format' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[sum:Calculation_4390148995850240:qk]' value='n&quot;$&quot;#,##0.0&quot;B&quot;;-&quot;$&quot;#,##0.0&quot;B&quot;' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view><breakdown value='auto' /></view>
+            <mark class='Bar' />
+            <encodings>
+              <color column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]' />
+            </encodings>
+          </pane>
+        </panes>
+        <rows>[federated.0z5x4qg09ht8lm11mizk51qku86y].[sum:Calculation_4390148995850240:qk]</rows>
+        <cols>[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]</cols>
+      </table>
+      <simple-id uuid='{A1B2C3D4-1234-5678-ABCD-000000000005}' />
+    </worksheet>
+    <worksheet name='Rule of 40'>
+      <layout-options>
+        <title><formatted-text><run>PANW Rule of 40 (YoY Growth % + FCF Margin %)</run></formatted-text></title>
+      </layout-options>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='fact_financials+' name='federated.0z5x4qg09ht8lm11mizk51qku86y' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0z5x4qg09ht8lm11mizk51qku86y'>
+            <column caption='Value ($B)' datatype='real' name='[Calculation_4390148995850240]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='[value] / 1000000000' />
+            </column>
+            <column caption='Rule of 40 Score' datatype='real' name='[Calculation_5100000000000003]' role='measure' type='quantitative'>
+              <calculation class='tableau' formula='(SUM(IF [line_item] = &apos;Revenue&apos; THEN [Calculation_4390148995850240] END) - LOOKUP(SUM(IF [line_item] = &apos;Revenue&apos; THEN [Calculation_4390148995850240] END), -4))&#10;/ ABS(LOOKUP(SUM(IF [line_item] = &apos;Revenue&apos; THEN [Calculation_4390148995850240] END), -4))&#10;+ SUM(IF [line_item] = &apos;FreeCashFlow&apos; THEN [Calculation_4390148995850240] END)&#10;/ SUM(IF [line_item] = &apos;Revenue&apos; THEN [Calculation_4390148995850240] END)'>
+                <table-calc ordering-type='Rows' />
+              </calculation>
+            </column>
+            <column caption='Passes Rule of 40' datatype='string' name='[Calculation_5100000000000004]' role='measure' type='nominal'>
+              <calculation class='tableau' formula='IF [Calculation_5100000000000003] &gt;= 0.40 THEN &apos;Yes (&gt;=40%)&apos; ELSE &apos;No (&lt;40%)&apos; END'>
+                <table-calc ordering-type='Rows' />
+              </calculation>
+            </column>
+            <column caption='Period End' datatype='date' name='[period_end]' role='dimension' type='ordinal' />
+            <column-instance column='[period_end]' derivation='Quarter-Trunc' name='[tqr:period_end:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Calculation_5100000000000003]' derivation='User' name='[usr:Calculation_5100000000000003:qk]' pivot='key' type='quantitative'>
+              <table-calc ordering-field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[period_end]' ordering-type='Field' />
+            </column-instance>
+            <column-instance column='[Calculation_5100000000000004]' derivation='User' name='[usr:Calculation_5100000000000004:nk]' pivot='key' type='nominal'>
+              <table-calc ordering-field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[period_end]' ordering-type='Field' />
+              <table-calc field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[Calculation_5100000000000003]' ordering-field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[period_end]' ordering-type='Field' />
+            </column-instance>
+            <column caption='Value' datatype='real' name='[value]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='quantitative' column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000003:qk]' included-values='non-null' />
+          <slices>
+            <column>[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000003:qk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000003:qk]' scope='rows' value='Rule of 40 Score' />
+            <format attr='title' class='0' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]' scope='cols' value='Fiscal Quarter End' />
+          </style-rule>
+          <style-rule element='label'>
+            <format attr='text-format' field='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000003:qk]' value='p0%' />
+          </style-rule>
+          <style-rule element='refline'>
+            <format attr='fill-above' id='refline0' value='#00000000' />
+            <format attr='fill-below' id='refline0' value='#00000000' />
+            <format attr='line-visibility' id='refline0' value='on' />
+            <format attr='line-pattern-only' id='refline0' value='dashed' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view><breakdown value='auto' /></view>
+            <mark class='Bar' />
+            <mark-sizing custom-mark-size-in-axis-units='1.0' mark-alignment='mark-alignment-left' mark-sizing-setting='marks-scaling-on' use-custom-mark-size='false' />
+            <encodings>
+              <color column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000004:nk]' />
+            </encodings>
+            <reference-line axis-column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000003:qk]' enable-instant-analytics='true' formula='constant' id='refline0' label-type='value' scope='per-pane' value='0.4' value-column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000003:qk]' z-order='1' />
+          </pane>
+        </panes>
+        <rows>[federated.0z5x4qg09ht8lm11mizk51qku86y].[usr:Calculation_5100000000000003:qk]</rows>
+        <cols>[federated.0z5x4qg09ht8lm11mizk51qku86y].[tqr:period_end:qk]</cols>
+      </table>
+      <simple-id uuid='{A1B2C3D4-1234-5678-ABCD-000000000006}' />
+    </worksheet>
   </worksheets>
   <dashboards>
     <dashboard enable-sort-zone-taborder='true' name='Dashboard 1'>
@@ -1647,6 +2005,240 @@
         </devicelayout>
       </devicelayouts>
       <simple-id uuid='{A8FDFD72-4E5B-4415-A279-E9B0F0FE1710}' />
+    </dashboard>
+    <dashboard enable-sort-zone-taborder='true' name='Dashboard 2 — FCF &amp; Margins'>
+      <style />
+      <size sizing-mode='automatic' />
+      <zones>
+        <zone h='100000' id='400' type-v2='layout-basic' w='100000' x='0' y='0'>
+          <zone forceUpdate='true' h='4157' id='401' type-v2='text' w='98770' x='615' y='1035'>
+            <formatted-text>
+              <run bold='true' fontalignment='1' fontcolor='#000000' fontsize='14'>Palo Alto Networks — FCF &amp; Margins Dashboard</run>
+            </formatted-text>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone h='30000' id='402' name='Income &amp; FCF' w='98770' x='615' y='6000'>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone h='30000' id='403' name='FCF Bridge' w='49000' x='615' y='37000'>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone h='30000' id='404' name='All Margins %' w='49770' x='49615' y='37000'>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone forceUpdate='true' h='3000' id='405' type-v2='text' w='98770' x='615' y='94000'>
+            <formatted-text>
+              <run fontalignment='1' fontcolor='#000000'>Source: SEC EDGAR XBRL  |  Data through FY2026 Q2  |  github.com/fluffypotato999/ai-financial-analyst</run>
+            </formatted-text>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone-style>
+            <format attr='border-color' value='#000000' />
+            <format attr='border-style' value='none' />
+            <format attr='border-width' value='0' />
+            <format attr='margin' value='8' />
+          </zone-style>
+        </zone>
+      </zones>
+      <devicelayouts>
+        <devicelayout auto-generated='true' name='Phone'>
+          <size maxheight='1100' minheight='1100' sizing-mode='vscroll' />
+          <zones>
+            <zone h='100000' id='410' type-v2='layout-basic' w='100000' x='0' y='0'>
+              <zone h='97930' id='411' param='vert' type-v2='layout-flow' w='98770' x='615' y='1035'>
+                <zone forceUpdate='true' h='4157' id='401' type-v2='text' w='98770' x='615' y='1035'>
+                  <formatted-text>
+                    <run bold='true' fontalignment='1' fontcolor='#000000' fontsize='14'>Palo Alto Networks — FCF &amp; Margins Dashboard</run>
+                  </formatted-text>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='30000' id='402' is-fixed='true' name='Income &amp; FCF' w='98770' x='615' y='6000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='30000' id='403' is-fixed='true' name='FCF Bridge' w='98770' x='615' y='37000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='30000' id='404' is-fixed='true' name='All Margins %' w='98770' x='615' y='68000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+              </zone>
+              <zone-style>
+                <format attr='border-color' value='#000000' />
+                <format attr='border-style' value='none' />
+                <format attr='border-width' value='0' />
+                <format attr='margin' value='8' />
+              </zone-style>
+            </zone>
+          </zones>
+        </devicelayout>
+      </devicelayouts>
+      <simple-id uuid='{B2C3D4E5-2345-6789-BCDE-000000000002}' />
+    </dashboard>
+    <dashboard enable-sort-zone-taborder='true' name='Dashboard 3 — Operations'>
+      <style />
+      <size sizing-mode='automatic' />
+      <zones>
+        <zone h='100000' id='500' type-v2='layout-basic' w='100000' x='0' y='0'>
+          <zone forceUpdate='true' h='4157' id='501' type-v2='text' w='98770' x='615' y='1035'>
+            <formatted-text>
+              <run bold='true' fontalignment='1' fontcolor='#000000' fontsize='14'>Palo Alto Networks — Operations Dashboard</run>
+            </formatted-text>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone h='30000' id='502' name='DSO Trend' w='49000' x='615' y='6000'>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone h='30000' id='503' name='Billings Proxy' w='49770' x='49615' y='6000'>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone h='30000' id='504' name='Rule of 40' w='98770' x='615' y='37000'>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone forceUpdate='true' h='3000' id='505' type-v2='text' w='98770' x='615' y='94000'>
+            <formatted-text>
+              <run fontalignment='1' fontcolor='#000000'>Source: SEC EDGAR XBRL  |  Data through FY2026 Q2  |  github.com/fluffypotato999/ai-financial-analyst</run>
+            </formatted-text>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone-style>
+            <format attr='border-color' value='#000000' />
+            <format attr='border-style' value='none' />
+            <format attr='border-width' value='0' />
+            <format attr='margin' value='8' />
+          </zone-style>
+        </zone>
+      </zones>
+      <devicelayouts>
+        <devicelayout auto-generated='true' name='Phone'>
+          <size maxheight='1100' minheight='1100' sizing-mode='vscroll' />
+          <zones>
+            <zone h='100000' id='510' type-v2='layout-basic' w='100000' x='0' y='0'>
+              <zone h='97930' id='511' param='vert' type-v2='layout-flow' w='98770' x='615' y='1035'>
+                <zone forceUpdate='true' h='4157' id='501' type-v2='text' w='98770' x='615' y='1035'>
+                  <formatted-text>
+                    <run bold='true' fontalignment='1' fontcolor='#000000' fontsize='14'>Palo Alto Networks — Operations Dashboard</run>
+                  </formatted-text>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='30000' id='502' is-fixed='true' name='DSO Trend' w='98770' x='615' y='6000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='30000' id='503' is-fixed='true' name='Billings Proxy' w='98770' x='615' y='37000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='30000' id='504' is-fixed='true' name='Rule of 40' w='98770' x='615' y='68000'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+              </zone>
+              <zone-style>
+                <format attr='border-color' value='#000000' />
+                <format attr='border-style' value='none' />
+                <format attr='border-width' value='0' />
+                <format attr='margin' value='8' />
+              </zone-style>
+            </zone>
+          </zones>
+        </devicelayout>
+      </devicelayouts>
+      <simple-id uuid='{C3D4E5F6-3456-789A-CDEF-000000000003}' />
     </dashboard>
   </dashboards>
   <windows source-height='30'>
