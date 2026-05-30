@@ -7,7 +7,7 @@
 
 ## TL;DR for reviewers
 
-- **Live dashboard:** [PANW on Tableau Public](https://public.tableau.com/app/profile/sid.den/viz/PANWDashboard/Dashboard1) — every revenue mark links to its source 10-Q on sec.gov
+- **Live dashboard:** [PANW on Tableau Public](https://public.tableau.com/app/profile/sid.den/viz/PANW_Dashboard/Dashboard1) — 3 interactive dashboards, 9 worksheets; every revenue mark links to its source 10-Q on sec.gov
 - **Architectural invariant:** all arithmetic happens in deterministic Python/SQL before the LLM is called; the LLM writes narrative only, and every cited number must trace back to an SEC accession number (parse-then-compare hallucination guard enforces this in CI)
 - **Provenance:** seven columns — `concept_used`, `accession_no`, `fact_id`, `filing_url`, `form_type`, `filed_date`, `frame` — flow from XBRL ingest through the Excel Sources sheet and Tableau tooltips
 - **Entry points:** `make demo TICKER=PANW` runs the full pipeline; `src/generate_commentary.py` is the LLM call; `tests/eval/` is the ground-truth harness
@@ -132,14 +132,15 @@ preliminary-to-final value drift is handled silently.
 
 ## Dashboard
 
-**Tableau Public dashboard:** https://public.tableau.com/app/profile/sid.den/viz/PANWDashboard/Dashboard1
-Live: https://public.tableau.com/app/profile/sid.den/viz/PANWDashboard/Dashboard1
+**Live Tableau Public dashboard:** https://public.tableau.com/app/profile/sid.den/viz/PANW_Dashboard/Dashboard1
 
-Regenerate with `make dashboard TICKER=PANW`, then republish per `dashboard/Tableau_Setup.md`.
+Three interactive dashboards (9 worksheets total); every revenue/value mark click-throughs to its source SEC filing:
 
-**Currently published (v1):** Revenue Actuals, Margins %, Revenue Growth — all with click-through to source SEC filings.
+- **Dashboard 1 — Overview:** Quarterly Revenue, Margins % (Gross/Operating), YoY Revenue Growth
+- **Dashboard 2 — FCF & Margins:** Income & FCF, Operating/CapEx/Free Cash Flow, all four margins (Gross / Operating / Net / FCF)
+- **Dashboard 3 — Operations:** Days Sales Outstanding, Revenue & Deferred Revenue (billings proxy), Rule of 40 (YoY growth % + FCF margin % against the 40% line)
 
-**Speced, not yet authored (v2):** KPI strip, FCF bridge, Profitability stack, Forecast overlay (capped 4Q out), DSO, Billings proxy, Rule of 40 quadrant, Forecast vs Actuals scorecard. Calc fields and layout in `dashboard/Tableau_Setup.md` §4.
+Regenerate the underlying data with `make dashboard TICKER=PANW`, then republish per `dashboard/Tableau_Setup.md`. Workbook source (diff-friendly XML) lives in `dashboard/tableau_workbook/PANW_Dashboard.twb`.
 
 ---
 
