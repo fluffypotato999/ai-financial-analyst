@@ -1540,7 +1540,7 @@
         <panes>
           <pane selection-relaxation-option='selection-relaxation-allow'>
             <view><breakdown value='auto' /></view>
-            <mark class='Bar' />
+            <mark class='Line' />
             <encodings>
               <color column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]' />
             </encodings>
@@ -1553,7 +1553,7 @@
     </worksheet>
     <worksheet name='FCF Bridge'>
       <layout-options>
-        <title><formatted-text><run>PANW FCF Bridge ($B)</run></formatted-text></title>
+        <title><formatted-text><run>PANW Operating, CapEx &amp; Free Cash Flow ($B)</run></formatted-text></title>
       </layout-options>
       <table>
         <view>
@@ -1595,7 +1595,7 @@
         <panes>
           <pane selection-relaxation-option='selection-relaxation-allow'>
             <view><breakdown value='auto' /></view>
-            <mark class='Bar' />
+            <mark class='Line' />
             <encodings>
               <color column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]' />
             </encodings>
@@ -1771,7 +1771,7 @@
         <panes>
           <pane selection-relaxation-option='selection-relaxation-allow'>
             <view><breakdown value='auto' /></view>
-            <mark class='Bar' />
+            <mark class='Line' />
             <encodings>
               <color column='[federated.0z5x4qg09ht8lm11mizk51qku86y].[none:line_item:nk]' />
             </encodings>
